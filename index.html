@@ -301,6 +301,12 @@ function showScreen(id){
   });
   window.scrollTo({top:0, behavior:'smooth'});
 }
+function showScreenInstant(id){
+  document.querySelectorAll('.screen').forEach(el=>{
+    if(el.id === id){ el.style.display = 'block'; el.classList.add('active'); }
+    else { el.style.display = 'none'; el.classList.remove('active'); }
+  });
+}
 document.getElementById('btnEnter').addEventListener('click', ()=> showScreen('screen-app'));
 document.getElementById('btnHome').addEventListener('click', ()=> showScreen('screen-home'));
 document.getElementById('brandApp').addEventListener('click', ()=> showScreen('screen-home'));
@@ -366,6 +372,7 @@ function loadFromStorage(){
     if(Object.keys(PARTS).length){
       log(`Restored ${Object.keys(PARTS).length} previously loaded file(s) from this browser.`, 'ok');
       refreshAll();
+      showScreenInstant('screen-app');
     }
   }catch(e){ /* nothing saved yet, or storage unavailable (e.g. private browsing) */ }
 }
