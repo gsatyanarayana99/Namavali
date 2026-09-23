@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Namavali — Voter Roll Register</title>
+<meta name="description" content="A private, searchable register for voter roll CSVs — search by name, relation name, EPIC number or gender. Runs entirely in your browser.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Noto+Sans+Telugu:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  :root{
+    --ink:#ECEBE3; --ink-soft:#9CA0AC; --ink-faint:#6B707C;
+    --paper:#13151a; --paper-alt:#1a1d24; --card:#1e2129; --card-hi:#252932;
+    --rule: rgba(236,235,227,0.12); --rule-strong: rgba(236,235,227,0.28);
+    --accent:#c9973f; --accent-soft: rgba(201,151,63,0.16);
+    --accent-2:#4e8577; --accent-2-soft: rgba(78,133,119,0.18);
+    --male:#7ea3dd; --female:#dd9086; --third:#c3a0dd;
+    --shadow: 0 18px 40px -20px rgba(0,0,0,0.6);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans', system-ui, sans-serif;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1180px;margin:0 auto;padding:40px 28px 80px;}
+  a{color:inherit;}
+
+  /* ---------- screen transitions ---------- */
+  .screen{opacity:0;transform:translateY(14px);transition:opacity .38s cubic-bezier(.22,.61,.36,1), transform .38s cubic-bezier(.22,.61,.36,1);display:none;}
+  .screen.active{display:block;opacity:1;transform:translateY(0);}
+
+  /* ---------- landing page ---------- */
+  .hero{min-height:82vh;display:flex;flex-direction:column;justify-content:center;position:relative;}
+  .hero .kicker{font-family:'IBM Plex Mono', monospace;font-size:.8rem;letter-spacing:.08em;color:var(--accent);margin-bottom:18px;}
+  .hero h1{font-family:'Fraunces', Georgia, serif;font-weight:600;font-size:clamp(2.4rem, 5vw, 4rem);line-height:1.05;letter-spacing:-0.015em;margin:0 0 20px 0;max-width:16ch;}
+  .hero p.lead{font-size:1.15rem;line-height:1.6;color:var(--ink-soft);max-width:58ch;margin:0 0 36px 0;}
+  .cta{
+    display:inline-flex;align-items:center;gap:10px;
+    background:var(--accent);color:#1a1305;border:none;
+    font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:1rem;
+    padding:14px 26px;border-radius:3px;cursor:pointer;
+    transition:transform .2s ease, box-shadow .2s ease, background .2s ease;
+    box-shadow:0 10px 26px -12px rgba(201,151,63,0.55);
+  }
+  .cta:hover{transform:translateY(-2px);box-shadow:0 16px 34px -14px rgba(201,151,63,0.7);background:#d6a44e;}
+  .cta:active{transform:translateY(0);}
+  .cta .arrow{transition:transform .2s ease;}
+  .cta:hover .arrow{transform:translateX(4px);}
+
+  .features{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);margin-top:56px;border-radius:3px;overflow:hidden;}
+  .feature{background:var(--card);padding:24px 22px;transition:background .25s ease, transform .25s ease;}
+  .feature:hover{background:var(--card-hi);transform:translateY(-2px);}
+  .feature .fnum{font-family:'IBM Plex Mono',monospace;color:var(--accent);font-size:.8rem;margin-bottom:10px;display:block;}
+  .feature h4{margin:0 0 6px 0;font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:1.05rem;}
+  .feature p{margin:0;color:var(--ink-soft);font-size:.9rem;line-height:1.5;}
+
+  @media (max-width:800px){ .features{grid-template-columns:1fr;} }
+
+  /* ---------- app page ---------- */
+  .backlink{
+    display:inline-flex;align-items:center;gap:6px;color:var(--ink-soft);
+    font-size:.88rem;text-decoration:none;cursor:pointer;
+    transition:color .2s ease, transform .2s ease;
+  }
+  .backlink:hover{color:var(--accent);transform:translateX(-3px);}
+
+  header.page{border-bottom:1px solid var(--rule-strong);padding-bottom:22px;margin-bottom:32px;}
+  header.page h1{font-family:'Fraunces', Georgia, serif;font-weight:500;font-size:2.3rem;letter-spacing:-0.01em;margin:0 0 8px 0;}
+  header.page p{margin:0;max-width:66ch;color:var(--ink-soft);font-size:1.02rem;line-height:1.5;}
+
+  section{margin-bottom:36px;}
+  h2.section-title{font-family:'Fraunces', Georgia, serif;font-weight:500;font-size:1.25rem;margin:0 0 14px 0;border-bottom:1px solid var(--rule);padding-bottom:8px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
+  h2.section-title .sub-action{font-family:'IBM Plex Sans',sans-serif;font-size:.82rem;font-weight:500;}
+
+  #dropzone{border:2px dashed var(--rule-strong);border-radius:3px;padding:30px 24px;cursor:pointer;background:var(--card);transition:border-color .2s ease, background .2s ease, transform .15s ease;}
+  #dropzone:hover{border-color:var(--accent);}
+  #dropzone.drag{border-color:var(--accent);background:var(--accent-soft);transform:scale(1.005);}
+  #dropzone h3{margin:0 0 4px 0;font-size:1.05rem;font-weight:600;}
+  #dropzone p{margin:0;color:var(--ink-soft);font-size:.92rem;}
+  #fileInput{display:none;}
+  #log{margin-top:12px;font-family:'IBM Plex Mono', ui-monospace, monospace;font-size:.82rem;color:var(--ink-soft);max-height:120px;overflow-y:auto;white-space:pre-wrap;line-height:1.6;}
+  #log div{animation:fadein .25s ease;}
+  #log .err{color:#e08a7d;} #log .ok{color:#7fc4ae;}
+
+  @keyframes fadein{ from{opacity:0; transform:translateY(-3px);} to{opacity:1; transform:translateY(0);} }
+
+  .stats{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--rule);background:var(--card);border-radius:3px;overflow:hidden;}
+  .stat{flex:1 1 130px;padding:16px 18px;border-right:1px solid var(--rule);transition:background .2s ease;}
+  .stat:hover{background:var(--card-hi);}
+  .stat:last-child{border-right:none;}
+  .stat .num{font-family:'IBM Plex Mono', monospace;font-size:1.6rem;font-weight:500;display:block;color:var(--ink);}
+  .stat .lbl{font-size:.82rem;color:var(--ink-soft);}
+
+  table.parts{width:100%;border-collapse:collapse;font-size:.88rem;background:var(--card);}
+  table.parts th, table.parts td{padding:9px 12px;border-bottom:1px solid var(--rule);text-align:left;vertical-align:top;}
+  table.parts th{font-weight:600;color:var(--ink-soft);font-size:.78rem;}
+  table.parts tr{transition:background .15s ease;}
+  table.parts tr:hover td{background:var(--card-hi);}
+  table.parts tr:last-child td{border-bottom:none;}
+
+  .btn{font-family:inherit;background:var(--accent);color:#1a1305;border:none;padding:8px 16px;cursor:pointer;font-size:.9rem;border-radius:3px;font-weight:600;transition:transform .15s ease, box-shadow .15s ease, background .15s ease;}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 8px 18px -10px rgba(201,151,63,0.6);background:#d6a44e;}
+  .btn.ghost{background:none;color:var(--ink-soft);border:1px solid var(--rule-strong);}
+  .btn.ghost:hover{color:var(--ink);border-color:var(--ink-soft);box-shadow:none;background:var(--card-hi);}
+  .btn.danger{background:none;color:#e08a7d;border:1px solid rgba(224,138,125,0.4);}
+  .btn.danger:hover{background:rgba(224,138,125,0.12);border-color:#e08a7d;box-shadow:none;}
+  .rm-btn{background:none;border:1px solid var(--rule-strong);color:#e08a7d;font-size:.78rem;padding:3px 9px;cursor:pointer;border-radius:3px;transition:border-color .15s ease, background .15s ease;}
+  .rm-btn:hover{border-color:#e08a7d;background:rgba(224,138,125,0.1);}
+
+  .controls{display:flex;flex-wrap:wrap;gap:10px;background:var(--card);border:1px solid var(--rule);padding:16px;border-radius:3px;}
+  .controls input[type=text], .controls select{font-family:inherit;font-size:.92rem;padding:9px 11px;border:1px solid var(--rule-strong);background:var(--paper);color:var(--ink);border-radius:3px;transition:border-color .15s ease;}
+  .controls input[type=text]:focus, .controls select:focus{outline:none;border-color:var(--accent);}
+  .controls input[type=text]{flex:2 1 260px;}
+  .controls select{flex:1 1 160px;}
+
+  .results-meta{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 8px;flex-wrap:wrap;gap:6px;}
+  .results-meta span{color:var(--ink-soft);font-size:.88rem;}
+  .results-meta a{font-size:.85rem;color:var(--accent-2);cursor:pointer;text-decoration:underline;transition:color .15s ease;}
+  .results-meta a:hover{color:#68a598;}
+
+  #resultsWrap{animation:fadein .3s ease;}
+  table.voters{width:100%;border-collapse:collapse;font-size:.87rem;background:var(--card);}
+  table.voters th{text-align:left;padding:9px 10px;border-bottom:2px solid var(--rule-strong);font-size:.75rem;color:var(--ink-soft);font-weight:600;position:sticky;top:0;background:var(--card);}
+  table.voters td{padding:9px 10px;border-bottom:1px solid var(--rule);vertical-align:top;}
+  table.voters tr{transition:background .15s ease;}
+  table.voters tr:hover td{background:var(--card-hi);}
+  .epic{font-family:'IBM Plex Mono', monospace;font-size:.82rem;color:var(--ink);}
+  .partserial{font-family:'IBM Plex Mono', monospace;color:var(--ink-soft);}
+  .gdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
+  .gdot.male{background:var(--male);} .gdot.female{background:var(--female);} .gdot.third{background:var(--third);}
+  .relname{color:var(--ink-soft);font-size:.82rem;display:block;margin-top:1px;}
+  .addr{color:var(--ink-soft);font-size:.82rem;max-width:280px;}
+  .table-scroll{max-height:560px;overflow:auto;border:1px solid var(--rule);border-radius:3px;}
+
+  .empty{padding:40px 20px;text-align:center;color:var(--ink-soft);border:1px dashed var(--rule-strong);background:var(--card);border-radius:3px;}
+  .empty strong{display:block;color:var(--ink);font-size:1.02rem;margin-bottom:4px;font-weight:600;}
+  footer{margin-top:50px;border-top:1px solid var(--rule);padding-top:16px;font-size:.8rem;color:var(--ink-faint);}
+
+  /* ---------- modal ---------- */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(8,9,12,0.7);backdrop-filter:blur(2px);
+    display:flex;align-items:center;justify-content:center;z-index:100;
+    opacity:0;transition:opacity .2s ease;padding:20px;
+  }
+  .modal-overlay.show{opacity:1;}
+  .modal-box{
+    background:var(--card-hi);border:1px solid var(--rule-strong);border-radius:4px;
+    max-width:460px;width:100%;padding:26px 26px 22px;box-shadow:var(--shadow);
+    transform:translateY(10px) scale(.98);transition:transform .22s ease;
+  }
+  .modal-overlay.show .modal-box{transform:translateY(0) scale(1);}
+  .modal-box h3{margin:0 0 10px 0;font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:1.2rem;}
+  .modal-box p{margin:0 0 20px 0;color:var(--ink-soft);font-size:.92rem;line-height:1.5;}
+  .modal-buttons{display:flex;flex-direction:column;gap:8px;}
+  .modal-btn{
+    font-family:inherit;font-size:.9rem;padding:10px 14px;border-radius:3px;cursor:pointer;text-align:left;
+    background:var(--paper);color:var(--ink);border:1px solid var(--rule-strong);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .modal-btn:hover{border-color:var(--accent);background:var(--accent-soft);}
+  .modal-btn.primary{background:var(--accent);color:#1a1305;border-color:var(--accent);font-weight:600;}
+  .modal-btn.primary:hover{background:#d6a44e;}
+
+  /* ---------- brand ---------- */
+  .brand{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;}
+  .brand .mark{width:38px;height:38px;flex-shrink:0;border-radius:9px;background:var(--card-hi);border:1px solid var(--rule-strong);display:flex;align-items:center;justify-content:center;transition:border-color .2s ease, transform .2s ease;}
+  .brand:hover .mark{border-color:var(--accent);transform:translateY(-1px);}
+  .brand .mark svg{width:20px;height:20px;}
+  .brand .word{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.15rem;letter-spacing:-0.01em;line-height:1.1;}
+  .brand .tel{font-family:'Noto Sans Telugu', sans-serif;font-size:.72rem;color:var(--ink-soft);letter-spacing:.02em;}
+  .brand-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;}
+</style>
+</head>
+<body>
+
+<!-- ================= LANDING ================= -->
+<div class="screen active" id="screen-home">
+  <div class="wrap">
+    <div class="brand-row">
+      <div class="brand" id="brandHome1">
+        <span class="mark"><svg viewBox="0 0 64 64"><rect x="16" y="16" width="8" height="32" rx="1.5" fill="#c9973f"/><rect x="40" y="16" width="8" height="32" rx="1.5" fill="#c9973f"/><line x1="20" y1="16" x2="44" y2="48" stroke="#c9973f" stroke-width="8" stroke-linecap="round"/></svg></span>
+        <span><span class="word">Namavali</span><br><span class="tel">నామావళి</span></span>
+      </div>
+    </div>
+    <div class="hero">
+      <div class="kicker">SIR DRAFT ROLL TOOL</div>
+      <h1>A private, searchable register for your voter rolls.</h1>
+      <p class="lead">Upload the CSVs you've extracted from electoral roll PDFs and search across every part instantly — by name, relation name, EPIC number, or gender. Everything runs in your browser; nothing is uploaded to a server.</p>
+      <button class="cta" id="btnEnter">Open the register <span class="arrow">→</span></button>
+
+      <div class="features">
+        <div class="feature">
+          <span class="fnum">01</span>
+          <h4>Upload CSVs</h4>
+          <p>Add one part at a time, or several at once. Duplicate files are caught before anything gets overwritten by mistake.</p>
+        </div>
+        <div class="feature">
+          <span class="fnum">02</span>
+          <h4>Search instantly</h4>
+          <p>Look up a voter by name, relation name, or EPIC number, and filter by gender or part.</p>
+        </div>
+        <div class="feature">
+          <span class="fnum">03</span>
+          <h4>Stays on your device</h4>
+          <p>Parsing and search happen entirely client-side. Loaded data is remembered in this browser until you clear it.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div class="screen" id="screen-app">
+<div class="wrap">
+
+  <div class="brand-row">
+    <div class="brand" id="brandApp">
+      <span class="mark"><svg viewBox="0 0 64 64"><rect x="16" y="16" width="8" height="32" rx="1.5" fill="#c9973f"/><rect x="40" y="16" width="8" height="32" rx="1.5" fill="#c9973f"/><line x1="20" y1="16" x2="44" y2="48" stroke="#c9973f" stroke-width="8" stroke-linecap="round"/></svg></span>
+      <span><span class="word">Namavali</span><br><span class="tel">నామావళి</span></span>
+    </div>
+    <a class="backlink" id="btnHome">← Home</a>
+  </div>
+
+  <header class="page">
+    <h1>Voter Roll Register</h1>
+    <p>Upload one or more extracted voter-roll CSVs. Everything is read and searched entirely in your browser — files are never sent anywhere.</p>
+  </header>
+
+  <section>
+    <h2 class="section-title">Add CSV files</h2>
+    <div id="dropzone">
+      <h3>Drop CSV files here, or click to choose</h3>
+      <p>Expected columns: Serial, EPIC, Name, Relation Type, Relation Name, House No, Age, Gender, Constituency No, Constituency Name, Polling Station No, Polling Station Name, Polling Station Address, Section No, Section Name.</p>
+      <input type="file" id="fileInput" accept=".csv,text/csv" multiple>
+    </div>
+    <div id="log"></div>
+  </section>
+
+  <section id="statsSection" style="display:none;">
+    <h2 class="section-title">
+      Loaded so far
+      <span class="sub-action"><button class="btn danger" id="btnRemoveAll">Remove all</button></span>
+    </h2>
+    <div class="stats">
+      <div class="stat"><span class="num" id="statFiles">0</span><span class="lbl">files</span></div>
+      <div class="stat"><span class="num" id="statVoters">0</span><span class="lbl">voters</span></div>
+      <div class="stat"><span class="num" id="statMale">0</span><span class="lbl">male</span></div>
+      <div class="stat"><span class="num" id="statFemale">0</span><span class="lbl">female</span></div>
+      <div class="stat"><span class="num" id="statThird">0</span><span class="lbl">third gender</span></div>
+    </div>
+    <div style="margin-top:16px;overflow-x:auto;">
+      <table class="parts">
+        <thead><tr><th>Part</th><th>Constituency</th><th>Polling station</th><th>Rows</th><th>File</th><th></th></tr></thead>
+        <tbody id="partsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="section-title">Search voters</h2>
+    <div class="controls">
+      <input type="text" id="q" placeholder="Search name, relation name or EPIC number…">
+      <select id="fPart"><option value="">All parts</option></select>
+      <select id="fGender">
+        <option value="">Any gender</option>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Third Gender">Third gender</option>
+      </select>
+      <button class="btn" id="btnSearch">Search</button>
+      <button class="btn ghost" id="btnReset">Reset</button>
+    </div>
+    <div class="results-meta">
+      <span id="resultCount">Upload a CSV to begin searching.</span>
+      <a id="btnExport" style="display:none;">Export results as CSV</a>
+    </div>
+    <div id="resultsWrap"></div>
+  </section>
+
+  <footer>Data stays in your browser (parsed with PapaParse) and is remembered here across visits using local storage, until you remove it.</footer>
+</div>
+</div>
+
+<script>
+// ---------- state ----------
+let PARTS = {};     // partKey -> {partNumber, acName, pollingStationName, pollingStationAddress, fileName, count}
+let VOTERS = [];     // flat list of voter records
+
+let currentResults = [];
+
+// ---------- screen navigation ----------
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(el=>{
+    if(el.id === id){
+      el.style.display = 'block';
+      requestAnimationFrame(()=> el.classList.add('active'));
+    } else {
+      el.classList.remove('active');
+      setTimeout(()=>{ if(!el.classList.contains('active')) el.style.display='none'; }, 380);
+    }
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+document.getElementById('btnEnter').addEventListener('click', ()=> showScreen('screen-app'));
+document.getElementById('btnHome').addEventListener('click', ()=> showScreen('screen-home'));
+document.getElementById('brandApp').addEventListener('click', ()=> showScreen('screen-home'));
+document.getElementById('brandHome1').addEventListener('click', ()=> {});
+
+// ---------- modal ----------
+function showModal({title, message, buttons}){
+  return new Promise(resolve=>{
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    const box = document.createElement('div');
+    box.className = 'modal-box';
+    box.innerHTML = `<h3>${escapeHtml(title)}</h3><p>${escapeHtml(message)}</p>`;
+    const btnRow = document.createElement('div');
+    btnRow.className = 'modal-buttons';
+    buttons.forEach(b=>{
+      const btn = document.createElement('button');
+      btn.textContent = b.label;
+      btn.className = 'modal-btn' + (b.primary ? ' primary' : '');
+      btn.addEventListener('click', ()=>{ cleanup(); resolve(b.value); });
+      btnRow.appendChild(btn);
+    });
+    box.appendChild(btnRow);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    requestAnimationFrame(()=> overlay.classList.add('show'));
+    function cleanup(){
+      overlay.classList.remove('show');
+      setTimeout(()=> overlay.remove(), 200);
+    }
+    overlay.addEventListener('click', e=>{ if(e.target===overlay){ cleanup(); resolve(null); } });
+  });
+}
+
+const logEl = document.getElementById('log');
+function log(msg, cls){
+  const line = document.createElement('div');
+  if(cls) line.className = cls;
+  line.textContent = msg;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ---------- storage (best effort) ----------
+async function saveToStorage(){
+  try{
+    await window.storage.set('voter-csv:parts', JSON.stringify(PARTS), false);
+    await window.storage.set('voter-csv:voters', JSON.stringify(VOTERS), false);
+  }catch(e){ /* storage not available — ignore */ }
+}
+async function clearStorage(){
+  try{
+    await window.storage.delete('voter-csv:parts', false);
+    await window.storage.delete('voter-csv:voters', false);
+  }catch(e){ /* nothing to clear, or storage unavailable */ }
+}
+async function loadFromStorage(){
+  try{
+    const p = await window.storage.get('voter-csv:parts', false);
+    const v = await window.storage.get('voter-csv:voters', false);
+    if(p && p.value) PARTS = JSON.parse(p.value);
+    if(v && v.value) VOTERS = JSON.parse(v.value);
+    if(Object.keys(PARTS).length){
+      log(`Restored ${Object.keys(PARTS).length} previously loaded file(s) from this browser.`, 'ok');
+      refreshAll();
+    }
+  }catch(e){ /* nothing saved yet, or storage unavailable */ }
+}
+
+// ---------- column-name normalization ----------
+function normKey(k){ return String(k||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+const FIELD_MAP = {
+  serial:'serial', slno:'serial', sno:'serial',
+  epic:'epic', epicno:'epic', epicnumber:'epic',
+  name:'name',
+  relationtype:'relationType', relation:'relationType',
+  relationname:'relationName', fathershusbandsname:'relationName',
+  houseno:'houseNumber', housenumber:'houseNumber',
+  age:'age',
+  gender:'gender', sex:'gender',
+  constituencyno:'constituencyNo', acno:'constituencyNo',
+  constituencyname:'constituencyName', acname:'constituencyName',
+  pollingstationno:'partNumber', partno:'partNumber', partnumber:'partNumber',
+  pollingstationname:'pollingStationName',
+  pollingstationaddress:'pollingStationAddress', address:'pollingStationAddress',
+  sectionno:'sectionNo',
+  sectionname:'sectionName'
+};
+function normalizeRow(row){
+  const out = {};
+  for(const key of Object.keys(row)){
+    const canon = FIELD_MAP[normKey(key)];
+    if(canon) out[canon] = (row[key]==null ? '' : String(row[key]).trim());
+  }
+  return out;
+}
+
+// ---------- CSV processing ----------
+function parseFile(file){
+  return new Promise((resolve)=>{
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => resolve(results),
+      error: (err) => resolve({errors:[{message: err.message}], data:[]})
+    });
+  });
+}
+
+function removeByFileName(fileName){
+  const keysToDelete = Object.values(PARTS).filter(p=>p.fileName===fileName).map(p=>p.partKey);
+  keysToDelete.forEach(k=>delete PARTS[k]);
+  VOTERS = VOTERS.filter(v => v.sourceFile !== fileName);
+}
+
+async function processFile(file){
+  const results = await parseFile(file);
+  if(results.errors && results.errors.length){
+    log(`${file.name}: ${results.errors.length} row(s) had parse warnings (continuing).`);
+  }
+  const rows = (results.data||[]).map(normalizeRow).filter(r => r.name);
+  if(!rows.length){
+    log(`${file.name}: no recognizable voter rows found — check the column headers match what's expected.`, 'err');
+    return;
+  }
+  const first = rows[0];
+  const partKey = `${first.partNumber||'?'}::${first.pollingStationName||file.name}`;
+  if(PARTS[partKey] && PARTS[partKey].fileName !== file.name){
+    log(`${file.name}: Part ${first.partNumber} (${first.pollingStationName||'unknown station'}) is already loaded from a different file — skipped.`);
+    return;
+  }
+  rows.forEach(r => { r.sourceFile = file.name; r.partKey = partKey; });
+  VOTERS = VOTERS.concat(rows);
+  PARTS[partKey] = {
+    partNumber: first.partNumber || '—',
+    acName: first.constituencyName || '—',
+    pollingStationName: first.pollingStationName || '—',
+    pollingStationAddress: first.pollingStationAddress || '',
+    fileName: file.name,
+    count: rows.length,
+    partKey
+  };
+  log(`${file.name}: Part ${first.partNumber||'?'}, ${rows.length} voters loaded.`, 'ok');
+}
+
+// ---------- UI wiring ----------
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click', ()=> fileInput.click());
+dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e=>{ e.preventDefault(); dropzone.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+async function handleFiles(fileList){
+  let files = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.csv') || f.type==='text/csv');
+  if(!files.length){ log('No CSV files found in selection.', 'err'); return; }
+
+  // 1) same filename appearing more than once within THIS selection
+  const byName = {};
+  files.forEach(f => { (byName[f.name] = byName[f.name]||[]).push(f); });
+
+  const toProcess = [];
+  for(const name of Object.keys(byName)){
+    const group = byName[name];
+    if(group.length === 1){ toProcess.push(group[0]); continue; }
+    const choice = await showModal({
+      title: `Two files named "${name}"`,
+      message: `Your selection includes ${group.length} files with this exact name. Which one should be loaded?`,
+      buttons: group.map((f,i)=>({
+        label: `File ${i+1} — ${(f.size/1024).toFixed(0)} KB, modified ${new Date(f.lastModified).toLocaleString()}`,
+        value: i, primary: i===0
+      })).concat([{label:'Load both (as separate parts, if they differ)', value:'all'}])
+    });
+    if(choice === 'all') group.forEach(f=>toProcess.push(f));
+    else if(typeof choice === 'number') toProcess.push(group[choice]);
+    // choice === null (dismissed) -> skip this group entirely
+  }
+
+  // 2) filename already loaded from a previous batch
+  for(const file of toProcess){
+    const already = Object.values(PARTS).find(p => p.fileName === file.name);
+    if(already){
+      const choice = await showModal({
+        title: `"${file.name}" is already loaded`,
+        message: `A file with this name is already in the register (Part ${already.partNumber}, ${already.count} voters). Update it with this new file's data, or keep what's already loaded?`,
+        buttons: [
+          {label:'Update with this new file', value:'update', primary:true},
+          {label:'Keep existing data, skip this file', value:'keep'}
+        ]
+      });
+      if(choice !== 'update'){ log(`${file.name}: kept existing data, new file skipped.`); continue; }
+      removeByFileName(file.name);
+    }
+    await processFile(file);
+  }
+
+  await saveToStorage();
+  refreshAll();
+  fileInput.value = '';
+}
+
+function refreshAll(){ renderStats(); renderPartsTable(); populatePartFilter(); runSearch(); }
+
+function renderStats(){
+  const fileCount = Object.keys(PARTS).length;
+  document.getElementById('statsSection').style.display = fileCount ? 'block' : 'none';
+  document.getElementById('statFiles').textContent = fileCount;
+  document.getElementById('statVoters').textContent = VOTERS.length;
+  document.getElementById('statMale').textContent = VOTERS.filter(v=>/^male$/i.test(v.gender)).length;
+  document.getElementById('statFemale').textContent = VOTERS.filter(v=>/^female$/i.test(v.gender)).length;
+  document.getElementById('statThird').textContent = VOTERS.filter(v=>/third/i.test(v.gender)).length;
+}
+
+function renderPartsTable(){
+  const body = document.getElementById('partsBody');
+  body.innerHTML = '';
+  Object.values(PARTS).forEach(p=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(p.partNumber)}</td>
+      <td>${escapeHtml(p.acName)}</td>
+      <td>${escapeHtml(p.pollingStationName)}</td>
+      <td>${p.count}</td>
+      <td>${escapeHtml(p.fileName)}</td>
+      <td><button class="rm-btn" data-key="${escapeHtml(p.partKey)}">Remove</button></td>`;
+    body.appendChild(tr);
+  });
+  body.querySelectorAll('.rm-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const key = btn.getAttribute('data-key');
+      VOTERS = VOTERS.filter(v => v.partKey !== key);
+      delete PARTS[key];
+      saveToStorage();
+      refreshAll();
+    });
+  });
+}
+
+document.getElementById('btnRemoveAll').addEventListener('click', async ()=>{
+  if(!Object.keys(PARTS).length) return;
+  const choice = await showModal({
+    title: 'Remove everything?',
+    message: `This clears all ${Object.keys(PARTS).length} loaded file(s) and ${VOTERS.length} voter records from this browser. This can't be undone.`,
+    buttons: [
+      {label:'Remove all data', value:'confirm', primary:true},
+      {label:'Cancel', value:'cancel'}
+    ]
+  });
+  if(choice !== 'confirm') return;
+  PARTS = {}; VOTERS = [];
+  await clearStorage();
+  log('All loaded data removed.', 'ok');
+  refreshAll();
+});
+
+function populatePartFilter(){
+  const sel = document.getElementById('fPart');
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All parts</option>';
+  Object.values(PARTS).forEach(p=>{
+    const opt = document.createElement('option');
+    opt.value = p.partKey;
+    opt.textContent = `Part ${p.partNumber} — ${p.pollingStationName}`;
+    sel.appendChild(opt);
+  });
+  sel.value = current;
+}
+
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function runSearch(){
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const partKey = document.getElementById('fPart').value;
+  const gender = document.getElementById('fGender').value;
+
+  let results = VOTERS;
+  if(partKey) results = results.filter(v => v.partKey === partKey);
+  if(gender) results = results.filter(v => v.gender && v.gender.toLowerCase() === gender.toLowerCase());
+  if(q){
+    results = results.filter(v =>
+      (v.name||'').toLowerCase().includes(q) ||
+      (v.relationName||'').toLowerCase().includes(q) ||
+      (v.epic||'').toLowerCase().includes(q)
+    );
+  }
+  currentResults = results;
+  renderResults(results);
+}
+
+function renderResults(results){
+  const wrap = document.getElementById('resultsWrap');
+  const meta = document.getElementById('resultCount');
+  const exportLink = document.getElementById('btnExport');
+
+  if(VOTERS.length === 0){
+    wrap.innerHTML = `<div class="empty"><strong>No voter rolls loaded yet</strong>Add one or more CSV files above to start searching.</div>`;
+    meta.textContent = 'Upload a CSV to begin searching.';
+    exportLink.style.display = 'none';
+    return;
+  }
+  meta.textContent = `${results.length} of ${VOTERS.length} voters`;
+  exportLink.style.display = results.length ? 'inline' : 'none';
+
+  if(results.length === 0){
+    wrap.innerHTML = `<div class="empty"><strong>No matches</strong>Try a different name, EPIC number or filter.</div>`;
+    return;
+  }
+
+  const rows = results.map(v => {
+    const g = (v.gender||'').toLowerCase();
+    const gcls = g==='male' ? 'male' : (g==='female' ? 'female' : 'third');
+    return `<tr>
+      <td class="epic">${escapeHtml(v.epic||'—')}</td>
+      <td>${escapeHtml(v.name)}
+        <span class="relname">${escapeHtml(v.relationType||'Relation')}: ${escapeHtml(v.relationName||'—')}</span>
+      </td>
+      <td>${v.age||''}</td>
+      <td><span class="gdot ${gcls}"></span>${escapeHtml(v.gender||'')}</td>
+      <td>${escapeHtml(v.houseNumber||'')}</td>
+      <td class="partserial">${escapeHtml(v.partNumber||'')}-${escapeHtml(v.serial||'')}</td>
+      <td class="addr">${escapeHtml(v.pollingStationAddress||'')}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<div class="table-scroll"><table class="voters">
+    <thead><tr>
+      <th>EPIC</th><th>Name</th><th>Age</th><th>Gender</th><th>House no.</th><th>Part-Serial</th><th>Polling station address</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+function exportCsv(){
+  if(!currentResults.length) return;
+  const headers = ['EPIC','Name','RelationType','RelationName','Age','Gender','HouseNumber','PartNumber','Serial','PollingStationAddress'];
+  const rows = currentResults.map(v => [v.epic,v.name,v.relationType,v.relationName,v.age,v.gender,v.houseNumber,v.partNumber,v.serial,v.pollingStationAddress]
+    .map(f => `"${String(f??'').replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(',')].concat(rows).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'voter-search-results.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('btnSearch').addEventListener('click', runSearch);
+document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') runSearch(); });
+document.getElementById('fPart').addEventListener('change', runSearch);
+document.getElementById('fGender').addEventListener('change', runSearch);
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  document.getElementById('q').value='';
+  document.getElementById('fPart').value='';
+  document.getElementById('fGender').value='';
+  runSearch();
+});
+document.getElementById('btnExport').addEventListener('click', exportCsv);
+
+loadFromStorage();
+renderResults([]);
+</script>
+</body>
+</html>
