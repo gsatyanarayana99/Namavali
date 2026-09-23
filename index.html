@@ -345,29 +345,29 @@ function log(msg, cls){
 }
 
 // ---------- storage (best effort) ----------
-async function saveToStorage(){
+function saveToStorage(){
   try{
-    await window.storage.set('voter-csv:parts', JSON.stringify(PARTS), false);
-    await window.storage.set('voter-csv:voters', JSON.stringify(VOTERS), false);
-  }catch(e){ /* storage not available — ignore */ }
+    localStorage.setItem('voter-csv:parts', JSON.stringify(PARTS));
+    localStorage.setItem('voter-csv:voters', JSON.stringify(VOTERS));
+  }catch(e){ console.warn('Could not save to localStorage:', e); }
 }
-async function clearStorage(){
+function clearStorage(){
   try{
-    await window.storage.delete('voter-csv:parts', false);
-    await window.storage.delete('voter-csv:voters', false);
+    localStorage.removeItem('voter-csv:parts');
+    localStorage.removeItem('voter-csv:voters');
   }catch(e){ /* nothing to clear, or storage unavailable */ }
 }
-async function loadFromStorage(){
+function loadFromStorage(){
   try{
-    const p = await window.storage.get('voter-csv:parts', false);
-    const v = await window.storage.get('voter-csv:voters', false);
-    if(p && p.value) PARTS = JSON.parse(p.value);
-    if(v && v.value) VOTERS = JSON.parse(v.value);
+    const p = localStorage.getItem('voter-csv:parts');
+    const v = localStorage.getItem('voter-csv:voters');
+    if(p) PARTS = JSON.parse(p);
+    if(v) VOTERS = JSON.parse(v);
     if(Object.keys(PARTS).length){
       log(`Restored ${Object.keys(PARTS).length} previously loaded file(s) from this browser.`, 'ok');
       refreshAll();
     }
-  }catch(e){ /* nothing saved yet, or storage unavailable */ }
+  }catch(e){ /* nothing saved yet, or storage unavailable (e.g. private browsing) */ }
 }
 
 // ---------- column-name normalization ----------
