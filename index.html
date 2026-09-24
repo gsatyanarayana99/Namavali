@@ -9,6 +9,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Noto+Sans+Telugu:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --ink:#ECEBE3; --ink-soft:#9CA0AC; --ink-faint:#6B707C;
@@ -163,12 +166,18 @@
 
   /* ---------- brand ---------- */
   .brand{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;}
-  .brand .mark{width:38px;height:38px;flex-shrink:0;border-radius:9px;background:var(--card-hi);border:1px solid var(--rule-strong);display:flex;align-items:center;justify-content:center;transition:border-color .2s ease, transform .2s ease;}
+  .brand .mark{width:42px;height:42px;flex-shrink:0;border-radius:9px;background:var(--card-hi);border:1px solid var(--rule-strong);display:flex;align-items:center;justify-content:center;transition:border-color .2s ease, transform .2s ease;}
   .brand:hover .mark{border-color:var(--accent);transform:translateY(-1px);}
-  .brand .mark svg{width:20px;height:20px;}
-  .brand .word{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.15rem;letter-spacing:-0.01em;line-height:1.1;}
-  .brand .tel{font-family:'Noto Sans Telugu', sans-serif;font-size:.72rem;color:var(--ink-soft);letter-spacing:.02em;}
-  .brand-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;}
+  .brand .mark svg{width:22px;height:22px;}
+  .brand .word{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.55rem;letter-spacing:-0.01em;line-height:1;}
+  .brand-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;flex-wrap:wrap;gap:14px;}
+
+  /* ---------- admin ---------- */
+  .topnav-right{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .admin-status{font-size:.82rem;color:var(--ink-soft);}
+  .login-field{font-family:inherit;font-size:.92rem;padding:9px 11px;border:1px solid var(--rule-strong);background:var(--paper);color:var(--ink);border-radius:3px;width:100%;transition:border-color .15s ease;}
+  .login-field:focus{outline:none;border-color:var(--accent);}
+  .login-error{color:#e08a7d;font-size:.85rem;display:none;}
 </style>
 </head>
 <body>
@@ -179,7 +188,7 @@
     <div class="brand-row">
       <div class="brand" id="brandHome1">
         <span class="mark"><svg viewBox="0 0 64 64"><rect x="16" y="16" width="8" height="32" rx="1.5" fill="#c9973f"/><rect x="40" y="16" width="8" height="32" rx="1.5" fill="#c9973f"/><line x1="20" y1="16" x2="44" y2="48" stroke="#c9973f" stroke-width="8" stroke-linecap="round"/></svg></span>
-        <span><span class="word">Namavali</span><br><span class="tel">నామావళి</span></span>
+        <span class="word">Namavali</span>
       </div>
     </div>
     <div class="hero">
@@ -216,9 +225,14 @@
   <div class="brand-row">
     <div class="brand" id="brandApp">
       <span class="mark"><svg viewBox="0 0 64 64"><rect x="16" y="16" width="8" height="32" rx="1.5" fill="#c9973f"/><rect x="40" y="16" width="8" height="32" rx="1.5" fill="#c9973f"/><line x1="20" y1="16" x2="44" y2="48" stroke="#c9973f" stroke-width="8" stroke-linecap="round"/></svg></span>
-      <span><span class="word">Namavali</span><br><span class="tel">నామావళి</span></span>
+      <span class="word">Namavali</span>
     </div>
-    <a class="backlink" id="btnHome">← Home</a>
+    <div class="topnav-right">
+      <span class="admin-status" id="adminStatus"></span>
+      <button class="btn ghost" id="btnSignIn">Admin sign in</button>
+      <button class="btn ghost" id="btnSignOut" style="display:none;">Sign out</button>
+      <a class="backlink" id="btnHome">← Home</a>
+    </div>
   </div>
 
   <header class="page">
@@ -228,10 +242,14 @@
 
   <section>
     <h2 class="section-title">Add CSV files</h2>
-    <div id="dropzone">
+    <div id="dropzone" style="display:none;">
       <h3>Drop CSV files here, or click to choose</h3>
       <p>Expected columns: Serial, EPIC, Name, Relation Type, Relation Name, House No, Age, Gender, Constituency No, Constituency Name, Polling Station No, Polling Station Name, Polling Station Address, Section No, Section Name.</p>
       <input type="file" id="fileInput" accept=".csv,text/csv" multiple>
+    </div>
+    <div id="noAdminMsg" class="empty">
+      <strong>Search is open to everyone</strong>
+      Uploading new data requires the site owner to sign in. <a id="noAdminSignInLink" style="color:var(--accent-2);cursor:pointer;text-decoration:underline;">Sign in</a>
     </div>
     <div id="log"></div>
   </section>
@@ -277,14 +295,28 @@
     <div id="resultsWrap"></div>
   </section>
 
-  <footer>Data stays in your browser (parsed with PapaParse) and is remembered here across visits using local storage, until you remove it.</footer>
+  <footer>Voter data is stored in a shared database and searchable from any device. Only the signed-in site owner can add, update, or remove data — search itself needs no login.</footer>
 </div>
 </div>
 
 <script>
+// ---------- Firebase ----------
+const firebaseConfig = {
+  apiKey: "AIzaSyDvveblEGPlTQu08bCB-eAQWqWVzVjSASo",
+  authDomain: "namavali-4797.firebaseapp.com",
+  projectId: "namavali-4797",
+  storageBucket: "namavali-4797.firebasestorage.app",
+  messagingSenderId: "247517853011",
+  appId: "1:247517853011:web:45dff82fadf84417859da6"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
 // ---------- state ----------
-let PARTS = {};     // partKey -> {partNumber, acName, pollingStationName, pollingStationAddress, fileName, count}
+let PARTS = {};     // partKey -> {partNumber, acName, pollingStationName, pollingStationAddress, fileName, count, docId}
 let VOTERS = [];     // flat list of voter records
+let isAdmin = false;
 
 let currentResults = [];
 
@@ -350,32 +382,111 @@ function log(msg, cls){
   logEl.scrollTop = logEl.scrollHeight;
 }
 
-// ---------- storage (best effort) ----------
-function saveToStorage(){
-  try{
-    localStorage.setItem('voter-csv:parts', JSON.stringify(PARTS));
-    localStorage.setItem('voter-csv:voters', JSON.stringify(VOTERS));
-  }catch(e){ console.warn('Could not save to localStorage:', e); }
+// ---------- shared data (Firestore, real-time) ----------
+function subscribeToParts(){
+  db.collection('parts').onSnapshot(snapshot => {
+    PARTS = {}; VOTERS = [];
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      PARTS[d.partKey] = {
+        partNumber: d.partNumber, acName: d.acName,
+        pollingStationName: d.pollingStationName,
+        pollingStationAddress: d.pollingStationAddress,
+        fileName: d.fileName, count: d.count, partKey: d.partKey, docId: doc.id
+      };
+      (d.voters || []).forEach(v => VOTERS.push({...v, partKey: d.partKey, sourceFile: d.fileName}));
+    });
+    refreshAll();
+  }, err => {
+    log('Could not load the shared register: ' + err.message, 'err');
+  });
 }
-function clearStorage(){
-  try{
-    localStorage.removeItem('voter-csv:parts');
-    localStorage.removeItem('voter-csv:voters');
-  }catch(e){ /* nothing to clear, or storage unavailable */ }
+
+function safeDocId(key){ return String(key).replace(/\//g,'-').slice(0, 1500); }
+
+async function removeByFileName(fileName){
+  const match = Object.values(PARTS).find(p => p.fileName === fileName);
+  if(match){
+    try{ await db.collection('parts').doc(match.docId).delete(); }
+    catch(e){ log(`Could not remove previous version of ${fileName}: ${e.message}`, 'err'); }
+  }
 }
-function loadFromStorage(){
-  try{
-    const p = localStorage.getItem('voter-csv:parts');
-    const v = localStorage.getItem('voter-csv:voters');
-    if(p) PARTS = JSON.parse(p);
-    if(v) VOTERS = JSON.parse(v);
-    if(Object.keys(PARTS).length){
-      log(`Restored ${Object.keys(PARTS).length} previously loaded file(s) from this browser.`, 'ok');
-      refreshAll();
-      showScreenInstant('screen-app');
+
+async function removePart(partKey){
+  const p = PARTS[partKey];
+  if(!p) return;
+  try{ await db.collection('parts').doc(p.docId).delete(); }
+  catch(e){ log(`Could not remove Part ${p.partNumber}: ${e.message}`, 'err'); }
+}
+
+// ---------- admin auth ----------
+function updateAdminUI(user){
+  isAdmin = !!user;
+  document.getElementById('adminStatus').textContent = isAdmin ? `Signed in as ${user.email}` : '';
+  document.getElementById('btnSignIn').style.display = isAdmin ? 'none' : 'inline-flex';
+  document.getElementById('btnSignOut').style.display = isAdmin ? 'inline-flex' : 'none';
+  document.getElementById('dropzone').style.display = isAdmin ? 'block' : 'none';
+  document.getElementById('noAdminMsg').style.display = isAdmin ? 'none' : 'block';
+  renderStats();
+  renderPartsTable();
+}
+auth.onAuthStateChanged(updateAdminUI);
+
+function openLoginModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const box = document.createElement('div');
+  box.className = 'modal-box';
+  box.innerHTML = `
+    <h3>Admin sign in</h3>
+    <p>Sign in with the site owner's account to add or remove data.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">
+      <input type="email" id="loginEmail" class="login-field" placeholder="Email" autocomplete="username">
+      <input type="password" id="loginPassword" class="login-field" placeholder="Password" autocomplete="current-password">
+      <div id="loginError" class="login-error"></div>
+    </div>`;
+  const btnRow = document.createElement('div');
+  btnRow.className = 'modal-buttons';
+  const signInBtn = document.createElement('button');
+  signInBtn.className = 'modal-btn primary';
+  signInBtn.textContent = 'Sign in';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'modal-btn';
+  cancelBtn.textContent = 'Cancel';
+  btnRow.appendChild(signInBtn);
+  btnRow.appendChild(cancelBtn);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+
+  function cleanup(){ overlay.classList.remove('show'); setTimeout(()=> overlay.remove(), 200); }
+  cancelBtn.addEventListener('click', cleanup);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) cleanup(); });
+
+  async function attemptSignIn(){
+    const email = box.querySelector('#loginEmail').value.trim();
+    const password = box.querySelector('#loginPassword').value;
+    const errEl = box.querySelector('#loginError');
+    errEl.style.display = 'none';
+    signInBtn.textContent = 'Signing in…';
+    signInBtn.disabled = true;
+    try{
+      await auth.signInWithEmailAndPassword(email, password);
+      cleanup();
+    }catch(e){
+      errEl.textContent = 'Sign-in failed — check your email and password.';
+      errEl.style.display = 'block';
+      signInBtn.textContent = 'Sign in';
+      signInBtn.disabled = false;
     }
-  }catch(e){ /* nothing saved yet, or storage unavailable (e.g. private browsing) */ }
+  }
+  signInBtn.addEventListener('click', attemptSignIn);
+  box.querySelector('#loginPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptSignIn(); });
 }
+document.getElementById('btnSignIn').addEventListener('click', openLoginModal);
+document.getElementById('noAdminSignInLink').addEventListener('click', openLoginModal);
+document.getElementById('btnSignOut').addEventListener('click', ()=> auth.signOut());
 
 // ---------- column-name normalization ----------
 function normKey(k){ return String(k||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
@@ -417,12 +528,6 @@ function parseFile(file){
   });
 }
 
-function removeByFileName(fileName){
-  const keysToDelete = Object.values(PARTS).filter(p=>p.fileName===fileName).map(p=>p.partKey);
-  keysToDelete.forEach(k=>delete PARTS[k]);
-  VOTERS = VOTERS.filter(v => v.sourceFile !== fileName);
-}
-
 async function processFile(file){
   const results = await parseFile(file);
   if(results.errors && results.errors.length){
@@ -440,17 +545,22 @@ async function processFile(file){
     return;
   }
   rows.forEach(r => { r.sourceFile = file.name; r.partKey = partKey; });
-  VOTERS = VOTERS.concat(rows);
-  PARTS[partKey] = {
-    partNumber: first.partNumber || '—',
-    acName: first.constituencyName || '—',
-    pollingStationName: first.pollingStationName || '—',
-    pollingStationAddress: first.pollingStationAddress || '',
-    fileName: file.name,
-    count: rows.length,
-    partKey
-  };
-  log(`${file.name}: Part ${first.partNumber||'?'}, ${rows.length} voters loaded.`, 'ok');
+  try{
+    await db.collection('parts').doc(safeDocId(partKey)).set({
+      partKey,
+      partNumber: first.partNumber || '—',
+      acName: first.constituencyName || '—',
+      pollingStationName: first.pollingStationName || '—',
+      pollingStationAddress: first.pollingStationAddress || '',
+      fileName: file.name,
+      count: rows.length,
+      voters: rows,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    log(`${file.name}: Part ${first.partNumber||'?'}, ${rows.length} voters saved to the shared register.`, 'ok');
+  }catch(e){
+    log(`${file.name}: could not save — ${e.message}`, 'err');
+  }
 }
 
 // ---------- UI wiring ----------
@@ -463,6 +573,7 @@ dropzone.addEventListener('drop', e=>{ e.preventDefault(); dropzone.classList.re
 fileInput.addEventListener('change', e => handleFiles(e.target.files));
 
 async function handleFiles(fileList){
+  if(!isAdmin){ log('Sign in as admin to upload data.', 'err'); return; }
   let files = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.csv') || f.type==='text/csv');
   if(!files.length){ log('No CSV files found in selection.', 'err'); return; }
 
@@ -500,13 +611,11 @@ async function handleFiles(fileList){
         ]
       });
       if(choice !== 'update'){ log(`${file.name}: kept existing data, new file skipped.`); continue; }
-      removeByFileName(file.name);
+      await removeByFileName(file.name);
     }
     await processFile(file);
   }
 
-  await saveToStorage();
-  refreshAll();
   fileInput.value = '';
 }
 
@@ -520,6 +629,7 @@ function renderStats(){
   document.getElementById('statMale').textContent = VOTERS.filter(v=>/^male$/i.test(v.gender)).length;
   document.getElementById('statFemale').textContent = VOTERS.filter(v=>/^female$/i.test(v.gender)).length;
   document.getElementById('statThird').textContent = VOTERS.filter(v=>/third/i.test(v.gender)).length;
+  document.getElementById('btnRemoveAll').style.display = isAdmin ? 'inline-flex' : 'none';
 }
 
 function renderPartsTable(){
@@ -533,35 +643,35 @@ function renderPartsTable(){
       <td>${escapeHtml(p.pollingStationName)}</td>
       <td>${p.count}</td>
       <td>${escapeHtml(p.fileName)}</td>
-      <td><button class="rm-btn" data-key="${escapeHtml(p.partKey)}">Remove</button></td>`;
+      <td>${isAdmin ? `<button class="rm-btn" data-key="${escapeHtml(p.partKey)}">Remove</button>` : ''}</td>`;
     body.appendChild(tr);
   });
   body.querySelectorAll('.rm-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const key = btn.getAttribute('data-key');
-      VOTERS = VOTERS.filter(v => v.partKey !== key);
-      delete PARTS[key];
-      saveToStorage();
-      refreshAll();
+      removePart(btn.getAttribute('data-key'));
     });
   });
 }
 
 document.getElementById('btnRemoveAll').addEventListener('click', async ()=>{
-  if(!Object.keys(PARTS).length) return;
+  if(!isAdmin || !Object.keys(PARTS).length) return;
   const choice = await showModal({
     title: 'Remove everything?',
-    message: `This clears all ${Object.keys(PARTS).length} loaded file(s) and ${VOTERS.length} voter records from this browser. This can't be undone.`,
+    message: `This permanently deletes all ${Object.keys(PARTS).length} loaded file(s) and ${VOTERS.length} voter records from the shared register, for every device. This can't be undone.`,
     buttons: [
       {label:'Remove all data', value:'confirm', primary:true},
       {label:'Cancel', value:'cancel'}
     ]
   });
   if(choice !== 'confirm') return;
-  PARTS = {}; VOTERS = [];
-  await clearStorage();
-  log('All loaded data removed.', 'ok');
-  refreshAll();
+  try{
+    const batch = db.batch();
+    Object.values(PARTS).forEach(p => batch.delete(db.collection('parts').doc(p.docId)));
+    await batch.commit();
+    log('All loaded data removed.', 'ok');
+  }catch(e){
+    log('Could not remove all data: ' + e.message, 'err');
+  }
 });
 
 function populatePartFilter(){
@@ -669,7 +779,7 @@ document.getElementById('btnReset').addEventListener('click', ()=>{
 });
 document.getElementById('btnExport').addEventListener('click', exportCsv);
 
-loadFromStorage();
+subscribeToParts();
 renderResults([]);
 </script>
 </body>
