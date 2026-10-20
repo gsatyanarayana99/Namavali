@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Namavali — Voter Roll Register</title>
-<meta name="description" content="A private, searchable register for voter roll CSVs — search by name, relation name, EPIC number or gender. Runs entirely in your browser.">
+<meta name="description" content="A private, searchable register for voter roll CSVs — search by name (English or Telugu), relation name, EPIC number, ward or gender.">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Noto+Sans+Telugu:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Noto+Sans+Telugu:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
@@ -27,6 +27,7 @@
   body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans', system-ui, sans-serif;-webkit-font-smoothing:antialiased;}
   .wrap{max-width:1180px;margin:0 auto;padding:40px 28px 80px;}
   a{color:inherit;}
+  .te{font-family:'Noto Sans Telugu','IBM Plex Sans',system-ui,sans-serif;}
 
   /* ---------- screen transitions ---------- */
   .screen{opacity:0;transform:translateY(14px);transition:opacity .38s cubic-bezier(.22,.61,.36,1), transform .38s cubic-bezier(.22,.61,.36,1);display:none;}
@@ -114,7 +115,7 @@
   .controls input[type=text], .controls select{font-family:inherit;font-size:.92rem;padding:9px 11px;border:1px solid var(--rule-strong);background:var(--paper);color:var(--ink);border-radius:3px;transition:border-color .15s ease;}
   .controls input[type=text]:focus, .controls select:focus{outline:none;border-color:var(--accent);}
   .controls input[type=text]{flex:2 1 260px;}
-  .controls select{flex:1 1 160px;}
+  .controls select{flex:1 1 140px;}
 
   .results-meta{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 8px;flex-wrap:wrap;gap:6px;}
   .results-meta span{color:var(--ink-soft);font-size:.88rem;}
@@ -131,8 +132,9 @@
   .partserial{font-family:'IBM Plex Mono', monospace;color:var(--ink-soft);}
   .gdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
   .gdot.male{background:var(--male);} .gdot.female{background:var(--female);} .gdot.third{background:var(--third);}
-  .relname{color:var(--ink-soft);font-size:.82rem;display:block;margin-top:1px;}
-  .addr{color:var(--ink-soft);font-size:.82rem;max-width:280px;}
+  .subname{color:var(--ink-soft);font-size:.8rem;display:block;margin-top:1px;}
+  .relname{color:var(--ink-soft);font-size:.82rem;display:block;margin-top:5px;}
+  .relname .te{font-size:.78rem;color:var(--ink-faint);}
   .table-scroll{max-height:560px;overflow:auto;border:1px solid var(--rule);border-radius:3px;}
 
   .empty{padding:40px 20px;text-align:center;color:var(--ink-soft);border:1px dashed var(--rule-strong);background:var(--card);border-radius:3px;}
@@ -194,24 +196,24 @@
     <div class="hero">
       <div class="kicker">SIR DRAFT ROLL TOOL</div>
       <h1>A private, searchable register for your voter rolls.</h1>
-      <p class="lead">Upload the CSVs you've extracted from electoral roll PDFs and search across every part instantly — by name, relation name, EPIC number, or gender. Everything runs in your browser; nothing is uploaded to a server.</p>
+      <p class="lead">Upload the CSVs you've extracted from electoral roll PDFs and search across every file instantly — by name in English or Telugu, relation name, EPIC number, ward, or gender.</p>
       <button class="cta" id="btnEnter">Open the register <span class="arrow">→</span></button>
 
       <div class="features">
         <div class="feature">
           <span class="fnum">01</span>
           <h4>Upload CSVs</h4>
-          <p>Add one part at a time, or several at once. Duplicate files are caught before anything gets overwritten by mistake.</p>
+          <p>Add one file at a time, or several at once. Duplicate files are caught before anything gets overwritten by mistake.</p>
         </div>
         <div class="feature">
           <span class="fnum">02</span>
           <h4>Search instantly</h4>
-          <p>Look up a voter by name, relation name, or EPIC number, and filter by gender or part.</p>
+          <p>Look up a voter by name (English or Telugu), relation name, or EPIC number, and filter by ward, gender or file.</p>
         </div>
         <div class="feature">
           <span class="fnum">03</span>
-          <h4>Stays on your device</h4>
-          <p>Parsing and search happen entirely client-side. Loaded data is remembered in this browser until you clear it.</p>
+          <h4>Shared across devices</h4>
+          <p>Data lives in a shared database, so anyone with the link can search from any device. Only the signed-in owner can change it.</p>
         </div>
       </div>
     </div>
@@ -237,14 +239,14 @@
 
   <header class="page">
     <h1>Voter Roll Register</h1>
-    <p>Upload one or more extracted voter-roll CSVs. Everything is read and searched entirely in your browser — files are never sent anywhere.</p>
+    <p>Search the voter rolls by name (English or Telugu), relation name or EPIC number. Filter by ward, gender or file.</p>
   </header>
 
   <section>
     <h2 class="section-title">Add CSV files</h2>
     <div id="dropzone" style="display:none;">
       <h3>Drop CSV files here, or click to choose</h3>
-      <p>Expected columns: Serial, EPIC, Name, Relation Type, Relation Name, House No, Age, Gender, Constituency No, Constituency Name, Polling Station No, Polling Station Name, Polling Station Address, Section No, Section Name.</p>
+      <p>Expected columns: Serial No, Ward No, Name, Name (English), Relation Type, Relation Name, Relation Name (English), Age, Gender, EPIC No.</p>
       <input type="file" id="fileInput" accept=".csv,text/csv" multiple>
     </div>
     <div id="noAdminMsg" class="empty">
@@ -268,7 +270,7 @@
     </div>
     <div style="margin-top:16px;overflow-x:auto;">
       <table class="parts">
-        <thead><tr><th>Part</th><th>Constituency</th><th>Polling station</th><th>Rows</th><th>File</th><th></th></tr></thead>
+        <thead><tr><th>File</th><th>Wards</th><th>Voters</th><th></th></tr></thead>
         <tbody id="partsBody"></tbody>
       </table>
     </div>
@@ -277,8 +279,9 @@
   <section>
     <h2 class="section-title">Search voters</h2>
     <div class="controls">
-      <input type="text" id="q" placeholder="Search name, relation name or EPIC number…">
-      <select id="fPart"><option value="">All parts</option></select>
+      <input type="text" id="q" placeholder="Search name, relation name or EPIC number (English or Telugu)…">
+      <select id="fPart"><option value="">All files</option></select>
+      <select id="fWard"><option value="">All wards</option></select>
       <select id="fGender">
         <option value="">Any gender</option>
         <option value="Male">Male</option>
@@ -314,11 +317,15 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 // ---------- state ----------
-let PARTS = {};     // partKey -> {partNumber, acName, pollingStationName, pollingStationAddress, fileName, count, docId}
-let VOTERS = [];     // flat list of voter records
+let PARTS = {};     // partKey (= file name) -> {partKey, fileName, count, wards[], docIds[]}
+let VOTERS = [];    // flat list of voter records
 let isAdmin = false;
 
 let currentResults = [];
+
+// A Firestore document is limited to ~1 MB. A whole roll (Telugu + English names)
+// is bigger than that, so each file is stored as several "chunk" documents.
+const CHUNK_SIZE = 600;
 
 // ---------- screen navigation ----------
 function showScreen(id){
@@ -332,12 +339,6 @@ function showScreen(id){
     }
   });
   window.scrollTo({top:0, behavior:'smooth'});
-}
-function showScreenInstant(id){
-  document.querySelectorAll('.screen').forEach(el=>{
-    if(el.id === id){ el.style.display = 'block'; el.classList.add('active'); }
-    else { el.style.display = 'none'; el.classList.remove('active'); }
-  });
 }
 document.getElementById('btnEnter').addEventListener('click', ()=> showScreen('screen-app'));
 document.getElementById('btnHome').addEventListener('click', ()=> showScreen('screen-home'));
@@ -385,16 +386,26 @@ function log(msg, cls){
 // ---------- shared data (Firestore, real-time) ----------
 function subscribeToParts(){
   db.collection('parts').onSnapshot(snapshot => {
-    PARTS = {}; VOTERS = [];
+    // group chunk documents by file
+    const groups = {};
     snapshot.forEach(doc => {
       const d = doc.data();
-      PARTS[d.partKey] = {
-        partNumber: d.partNumber, acName: d.acName,
-        pollingStationName: d.pollingStationName,
-        pollingStationAddress: d.pollingStationAddress,
-        fileName: d.fileName, count: d.count, partKey: d.partKey, docId: doc.id
-      };
-      (d.voters || []).forEach(v => VOTERS.push({...v, partKey: d.partKey, sourceFile: d.fileName}));
+      if(!d.partKey) return;
+      (groups[d.partKey] = groups[d.partKey] || []).push({id: doc.id, d});
+    });
+
+    PARTS = {}; VOTERS = [];
+    Object.keys(groups).forEach(key => {
+      const docs = groups[key].sort((a,b) => (a.d.chunk||0) - (b.d.chunk||0));
+      const fileName = docs[0].d.fileName || key;
+      let voters = [];
+      docs.forEach(x => { voters = voters.concat(x.d.voters || []); });
+
+      const wardSet = new Set(voters.map(v => v.ward).filter(Boolean));
+      const wards = Array.from(wardSet).sort((a,b) => Number(a) - Number(b));
+
+      PARTS[key] = { partKey: key, fileName, count: voters.length, wards, docIds: docs.map(x => x.id) };
+      voters.forEach(v => VOTERS.push({...v, partKey: key, sourceFile: fileName}));
     });
     refreshAll();
   }, err => {
@@ -402,12 +413,20 @@ function subscribeToParts(){
   });
 }
 
-function safeDocId(key){ return String(key).replace(/\//g,'-').slice(0, 1500); }
+function safeDocId(key){ return String(key).replace(/\//g,'-').slice(0, 1000); }
+
+async function deleteDocIds(docIds){
+  for(let i = 0; i < docIds.length; i += 400){
+    const batch = db.batch();
+    docIds.slice(i, i + 400).forEach(id => batch.delete(db.collection('parts').doc(id)));
+    await batch.commit();
+  }
+}
 
 async function removeByFileName(fileName){
   const match = Object.values(PARTS).find(p => p.fileName === fileName);
   if(match){
-    try{ await db.collection('parts').doc(match.docId).delete(); }
+    try{ await deleteDocIds(match.docIds); }
     catch(e){ log(`Could not remove previous version of ${fileName}: ${e.message}`, 'err'); }
   }
 }
@@ -415,8 +434,8 @@ async function removeByFileName(fileName){
 async function removePart(partKey){
   const p = PARTS[partKey];
   if(!p) return;
-  try{ await db.collection('parts').doc(p.docId).delete(); }
-  catch(e){ log(`Could not remove Part ${p.partNumber}: ${e.message}`, 'err'); }
+  try{ await deleteDocIds(p.docIds); }
+  catch(e){ log(`Could not remove ${p.fileName}: ${e.message}`, 'err'); }
 }
 
 // ---------- admin auth ----------
@@ -489,23 +508,20 @@ document.getElementById('noAdminSignInLink').addEventListener('click', openLogin
 document.getElementById('btnSignOut').addEventListener('click', ()=> auth.signOut());
 
 // ---------- column-name normalization ----------
+// Headers are lower-cased and stripped of everything except letters/digits,
+// so "Name (English)" -> "nameenglish", "Serial No" -> "serialno", etc.
 function normKey(k){ return String(k||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
 const FIELD_MAP = {
-  serial:'serial', slno:'serial', sno:'serial',
+  serial:'serial', serialno:'serial', slno:'serial', sno:'serial',
+  ward:'ward', wardno:'ward', wardnumber:'ward',
   epic:'epic', epicno:'epic', epicnumber:'epic',
   name:'name',
+  nameenglish:'nameEn', nameen:'nameEn',
   relationtype:'relationType', relation:'relationType',
   relationname:'relationName', fathershusbandsname:'relationName',
-  houseno:'houseNumber', housenumber:'houseNumber',
+  relationnameenglish:'relationNameEn', relationnameen:'relationNameEn',
   age:'age',
-  gender:'gender', sex:'gender',
-  constituencyno:'constituencyNo', acno:'constituencyNo',
-  constituencyname:'constituencyName', acname:'constituencyName',
-  pollingstationno:'partNumber', partno:'partNumber', partnumber:'partNumber',
-  pollingstationname:'pollingStationName',
-  pollingstationaddress:'pollingStationAddress', address:'pollingStationAddress',
-  sectionno:'sectionNo',
-  sectionname:'sectionName'
+  gender:'gender', sex:'gender'
 };
 function normalizeRow(row){
   const out = {};
@@ -533,31 +549,36 @@ async function processFile(file){
   if(results.errors && results.errors.length){
     log(`${file.name}: ${results.errors.length} row(s) had parse warnings (continuing).`);
   }
-  const rows = (results.data||[]).map(normalizeRow).filter(r => r.name);
+  const rows = (results.data||[]).map(normalizeRow).filter(r => r.name || r.nameEn || r.epic);
   if(!rows.length){
     log(`${file.name}: no recognizable voter rows found — check the column headers match what's expected.`, 'err');
     return;
   }
-  const first = rows[0];
-  const partKey = `${first.partNumber||'?'}::${first.pollingStationName||file.name}`;
-  if(PARTS[partKey] && PARTS[partKey].fileName !== file.name){
-    log(`${file.name}: Part ${first.partNumber} (${first.pollingStationName||'unknown station'}) is already loaded from a different file — skipped.`);
-    return;
-  }
-  rows.forEach(r => { r.sourceFile = file.name; r.partKey = partKey; });
+
+  const partKey = file.name;                 // one "part" per uploaded file
+  const baseId = safeDocId(partKey);
+  const chunks = [];
+  for(let i = 0; i < rows.length; i += CHUNK_SIZE) chunks.push(rows.slice(i, i + CHUNK_SIZE));
+
   try{
-    await db.collection('parts').doc(safeDocId(partKey)).set({
-      partKey,
-      partNumber: first.partNumber || '—',
-      acName: first.constituencyName || '—',
-      pollingStationName: first.pollingStationName || '—',
-      pollingStationAddress: first.pollingStationAddress || '',
-      fileName: file.name,
-      count: rows.length,
-      voters: rows,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    log(`${file.name}: Part ${first.partNumber||'?'}, ${rows.length} voters saved to the shared register.`, 'ok');
+    // write 3 chunk documents per batch to stay well under Firestore's request-size limit
+    for(let i = 0; i < chunks.length; i += 3){
+      const batch = db.batch();
+      chunks.slice(i, i + 3).forEach((voters, j) => {
+        const idx = i + j;
+        batch.set(db.collection('parts').doc(`${baseId}__${String(idx).padStart(3,'0')}`), {
+          partKey,
+          fileName: file.name,
+          chunk: idx,
+          totalChunks: chunks.length,
+          totalCount: rows.length,
+          voters,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+    }
+    log(`${file.name}: ${rows.length} voters saved to the shared register.`, 'ok');
   }catch(e){
     log(`${file.name}: could not save — ${e.message}`, 'err');
   }
@@ -587,14 +608,13 @@ async function handleFiles(fileList){
     if(group.length === 1){ toProcess.push(group[0]); continue; }
     const choice = await showModal({
       title: `Two files named "${name}"`,
-      message: `Your selection includes ${group.length} files with this exact name. Which one should be loaded?`,
+      message: `Your selection includes ${group.length} files with this exact name. Which one should be loaded? (Files are stored by name, so only one can be kept.)`,
       buttons: group.map((f,i)=>({
         label: `File ${i+1} — ${(f.size/1024).toFixed(0)} KB, modified ${new Date(f.lastModified).toLocaleString()}`,
         value: i, primary: i===0
-      })).concat([{label:'Load both (as separate parts, if they differ)', value:'all'}])
+      }))
     });
-    if(choice === 'all') group.forEach(f=>toProcess.push(f));
-    else if(typeof choice === 'number') toProcess.push(group[choice]);
+    if(typeof choice === 'number') toProcess.push(group[choice]);
     // choice === null (dismissed) -> skip this group entirely
   }
 
@@ -604,7 +624,7 @@ async function handleFiles(fileList){
     if(already){
       const choice = await showModal({
         title: `"${file.name}" is already loaded`,
-        message: `A file with this name is already in the register (Part ${already.partNumber}, ${already.count} voters). Update it with this new file's data, or keep what's already loaded?`,
+        message: `A file with this name is already in the register (${already.count} voters). Update it with this new file's data, or keep what's already loaded?`,
         buttons: [
           {label:'Update with this new file', value:'update', primary:true},
           {label:'Keep existing data, skip this file', value:'keep'}
@@ -619,7 +639,7 @@ async function handleFiles(fileList){
   fileInput.value = '';
 }
 
-function refreshAll(){ renderStats(); renderPartsTable(); populatePartFilter(); runSearch(); }
+function refreshAll(){ renderStats(); renderPartsTable(); populateFilters(); runSearch(); }
 
 function renderStats(){
   const fileCount = Object.keys(PARTS).length;
@@ -632,17 +652,25 @@ function renderStats(){
   document.getElementById('btnRemoveAll').style.display = isAdmin ? 'inline-flex' : 'none';
 }
 
+function wardRangeLabel(wards){
+  if(!wards.length) return '—';
+  const nums = wards.map(Number);
+  if(nums.every(n => !isNaN(n))){
+    const contiguous = nums.every((n,i) => i === 0 || n === nums[i-1] + 1);
+    if(contiguous && nums.length > 2) return `${nums[0]}–${nums[nums.length-1]}`;
+  }
+  return wards.join(', ');
+}
+
 function renderPartsTable(){
   const body = document.getElementById('partsBody');
   body.innerHTML = '';
   Object.values(PARTS).forEach(p=>{
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${escapeHtml(p.partNumber)}</td>
-      <td>${escapeHtml(p.acName)}</td>
-      <td>${escapeHtml(p.pollingStationName)}</td>
-      <td>${p.count}</td>
       <td>${escapeHtml(p.fileName)}</td>
+      <td>${escapeHtml(wardRangeLabel(p.wards))}</td>
+      <td>${p.count}</td>
       <td>${isAdmin ? `<button class="rm-btn" data-key="${escapeHtml(p.partKey)}">Remove</button>` : ''}</td>`;
     body.appendChild(tr);
   });
@@ -665,26 +693,41 @@ document.getElementById('btnRemoveAll').addEventListener('click', async ()=>{
   });
   if(choice !== 'confirm') return;
   try{
-    const batch = db.batch();
-    Object.values(PARTS).forEach(p => batch.delete(db.collection('parts').doc(p.docId)));
-    await batch.commit();
+    const ids = [];
+    Object.values(PARTS).forEach(p => p.docIds.forEach(id => ids.push(id)));
+    await deleteDocIds(ids);
     log('All loaded data removed.', 'ok');
   }catch(e){
     log('Could not remove all data: ' + e.message, 'err');
   }
 });
 
-function populatePartFilter(){
-  const sel = document.getElementById('fPart');
-  const current = sel.value;
-  sel.innerHTML = '<option value="">All parts</option>';
+function populateFilters(){
+  // file filter
+  const selPart = document.getElementById('fPart');
+  const curPart = selPart.value;
+  selPart.innerHTML = '<option value="">All files</option>';
   Object.values(PARTS).forEach(p=>{
     const opt = document.createElement('option');
     opt.value = p.partKey;
-    opt.textContent = `Part ${p.partNumber} — ${p.pollingStationName}`;
-    sel.appendChild(opt);
+    opt.textContent = p.fileName;
+    selPart.appendChild(opt);
   });
-  sel.value = current;
+  selPart.value = curPart;
+
+  // ward filter
+  const selWard = document.getElementById('fWard');
+  const curWard = selWard.value;
+  const wards = Array.from(new Set(VOTERS.map(v => v.ward).filter(Boolean)))
+    .sort((a,b) => Number(a) - Number(b));
+  selWard.innerHTML = '<option value="">All wards</option>';
+  wards.forEach(w=>{
+    const opt = document.createElement('option');
+    opt.value = w;
+    opt.textContent = `Ward ${w}`;
+    selWard.appendChild(opt);
+  });
+  selWard.value = curWard;
 }
 
 function escapeHtml(s){
@@ -694,15 +737,19 @@ function escapeHtml(s){
 function runSearch(){
   const q = document.getElementById('q').value.trim().toLowerCase();
   const partKey = document.getElementById('fPart').value;
+  const ward = document.getElementById('fWard').value;
   const gender = document.getElementById('fGender').value;
 
   let results = VOTERS;
   if(partKey) results = results.filter(v => v.partKey === partKey);
+  if(ward) results = results.filter(v => String(v.ward) === ward);
   if(gender) results = results.filter(v => v.gender && v.gender.toLowerCase() === gender.toLowerCase());
   if(q){
     results = results.filter(v =>
       (v.name||'').toLowerCase().includes(q) ||
+      (v.nameEn||'').toLowerCase().includes(q) ||
       (v.relationName||'').toLowerCase().includes(q) ||
+      (v.relationNameEn||'').toLowerCase().includes(q) ||
       (v.epic||'').toLowerCase().includes(q)
     );
   }
@@ -732,22 +779,30 @@ function renderResults(results){
   const rows = results.map(v => {
     const g = (v.gender||'').toLowerCase();
     const gcls = g==='male' ? 'male' : (g==='female' ? 'female' : 'third');
+
+    // main name: English if available, Telugu underneath
+    const mainName = v.nameEn || v.name || '—';
+    const subName = (v.nameEn && v.name) ? `<span class="subname te">${escapeHtml(v.name)}</span>` : '';
+
+    // relation: English if available, Telugu in brackets
+    const relMain = v.relationNameEn || v.relationName || '—';
+    const relTe = (v.relationNameEn && v.relationName) ? ` <span class="te">(${escapeHtml(v.relationName)})</span>` : '';
+
     return `<tr>
       <td class="epic">${escapeHtml(v.epic||'—')}</td>
-      <td>${escapeHtml(v.name)}
-        <span class="relname">${escapeHtml(v.relationType||'Relation')}: ${escapeHtml(v.relationName||'—')}</span>
+      <td>${escapeHtml(mainName)}${subName}
+        <span class="relname">${escapeHtml(v.relationType||'Relation')}: ${escapeHtml(relMain)}${relTe}</span>
       </td>
-      <td>${v.age||''}</td>
+      <td>${escapeHtml(v.age||'')}</td>
       <td><span class="gdot ${gcls}"></span>${escapeHtml(v.gender||'')}</td>
-      <td>${escapeHtml(v.houseNumber||'')}</td>
-      <td class="partserial">${escapeHtml(v.partNumber||'')}-${escapeHtml(v.serial||'')}</td>
-      <td class="addr">${escapeHtml(v.pollingStationAddress||'')}</td>
+      <td class="partserial">${escapeHtml(v.ward||'—')}</td>
+      <td class="partserial">${escapeHtml(v.serial||'')}</td>
     </tr>`;
   }).join('');
 
   wrap.innerHTML = `<div class="table-scroll"><table class="voters">
     <thead><tr>
-      <th>EPIC</th><th>Name</th><th>Age</th><th>Gender</th><th>House no.</th><th>Part-Serial</th><th>Polling station address</th>
+      <th>EPIC</th><th>Name</th><th>Age</th><th>Gender</th><th>Ward</th><th>Serial</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
@@ -755,11 +810,11 @@ function renderResults(results){
 
 function exportCsv(){
   if(!currentResults.length) return;
-  const headers = ['EPIC','Name','RelationType','RelationName','Age','Gender','HouseNumber','PartNumber','Serial','PollingStationAddress'];
-  const rows = currentResults.map(v => [v.epic,v.name,v.relationType,v.relationName,v.age,v.gender,v.houseNumber,v.partNumber,v.serial,v.pollingStationAddress]
+  const headers = ['Serial No','Ward No','Name','Name (English)','Relation Type','Relation Name','Relation Name (English)','Age','Gender','EPIC No'];
+  const rows = currentResults.map(v => [v.serial,v.ward,v.name,v.nameEn,v.relationType,v.relationName,v.relationNameEn,v.age,v.gender,v.epic]
     .map(f => `"${String(f??'').replace(/"/g,'""')}"`).join(','));
-  const csv = [headers.join(',')].concat(rows).join('\n');
-  const blob = new Blob([csv], {type:'text/csv'});
+  const csv = '\ufeff' + [headers.map(h => `"${h}"`).join(',')].concat(rows).join('\r\n');   // BOM so Excel reads Telugu correctly
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = 'voter-search-results.csv';
@@ -770,10 +825,12 @@ function exportCsv(){
 document.getElementById('btnSearch').addEventListener('click', runSearch);
 document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') runSearch(); });
 document.getElementById('fPart').addEventListener('change', runSearch);
+document.getElementById('fWard').addEventListener('change', runSearch);
 document.getElementById('fGender').addEventListener('change', runSearch);
 document.getElementById('btnReset').addEventListener('click', ()=>{
   document.getElementById('q').value='';
   document.getElementById('fPart').value='';
+  document.getElementById('fWard').value='';
   document.getElementById('fGender').value='';
   runSearch();
 });
