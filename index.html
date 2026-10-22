@@ -20,6 +20,7 @@
     --accent:#c9973f; --accent-soft: rgba(201,151,63,0.16);
     --accent-2:#4e8577; --accent-2-soft: rgba(78,133,119,0.18);
     --male:#7ea3dd; --female:#dd9086; --third:#c3a0dd;
+    --pending:#d9a441; --covered:#5fb394; --other:#8fa6e0;
     --shadow: 0 18px 40px -20px rgba(0,0,0,0.6);
   }
   *{box-sizing:border-box;}
@@ -75,6 +76,7 @@
   section{margin-bottom:36px;}
   h2.section-title{font-family:'Fraunces', Georgia, serif;font-weight:500;font-size:1.25rem;margin:0 0 14px 0;border-bottom:1px solid var(--rule);padding-bottom:8px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;}
   h2.section-title .sub-action{font-family:'IBM Plex Sans',sans-serif;font-size:.82rem;font-weight:500;}
+  .hint{color:var(--ink-soft);font-size:.88rem;line-height:1.5;margin:0 0 12px 0;max-width:80ch;}
 
   #dropzone{border:2px dashed var(--rule-strong);border-radius:3px;padding:30px 24px;cursor:pointer;background:var(--card);transition:border-color .2s ease, background .2s ease, transform .15s ease;}
   #dropzone:hover{border-color:var(--accent);}
@@ -110,12 +112,16 @@
   .btn.danger:hover{background:rgba(224,138,125,0.12);border-color:#e08a7d;box-shadow:none;}
   .rm-btn{background:none;border:1px solid var(--rule-strong);color:#e08a7d;font-size:.78rem;padding:3px 9px;cursor:pointer;border-radius:3px;transition:border-color .15s ease, background .15s ease;}
   .rm-btn:hover{border-color:#e08a7d;background:rgba(224,138,125,0.1);}
+  .ed-btn{background:none;border:1px solid var(--rule-strong);color:var(--ink-soft);font-size:.78rem;padding:3px 9px;cursor:pointer;border-radius:3px;margin-right:6px;}
+  .ed-btn:hover{border-color:var(--accent);color:var(--accent);}
 
   .controls{display:flex;flex-wrap:wrap;gap:10px;background:var(--card);border:1px solid var(--rule);padding:16px;border-radius:3px;}
-  .controls input[type=text], .controls select{font-family:inherit;font-size:.92rem;padding:9px 11px;border:1px solid var(--rule-strong);background:var(--paper);color:var(--ink);border-radius:3px;transition:border-color .15s ease;}
-  .controls input[type=text]:focus, .controls select:focus{outline:none;border-color:var(--accent);}
+  .controls input[type=text], .controls input[type=tel], .controls select{font-family:inherit;font-size:.92rem;padding:9px 11px;border:1px solid var(--rule-strong);background:var(--paper);color:var(--ink);border-radius:3px;transition:border-color .15s ease;}
+  .controls input[type=text]:focus, .controls input[type=tel]:focus, .controls select:focus{outline:none;border-color:var(--accent);}
   .controls input[type=text]{flex:2 1 260px;}
+  .controls input[type=tel]{flex:1 1 170px;}
   .controls select{flex:1 1 140px;}
+  .controls.member-form input{flex:1 1 180px !important;}
 
   .results-meta{display:flex;justify-content:space-between;align-items:baseline;margin:16px 0 8px;flex-wrap:wrap;gap:6px;}
   .results-meta span{color:var(--ink-soft);font-size:.88rem;}
@@ -124,7 +130,7 @@
 
   #resultsWrap{animation:fadein .3s ease;}
   table.voters{width:100%;border-collapse:collapse;font-size:.87rem;background:var(--card);}
-  table.voters th{text-align:left;padding:9px 10px;border-bottom:2px solid var(--rule-strong);font-size:.75rem;color:var(--ink-soft);font-weight:600;position:sticky;top:0;background:var(--card);}
+  table.voters th{text-align:left;padding:9px 10px;border-bottom:2px solid var(--rule-strong);font-size:.75rem;color:var(--ink-soft);font-weight:600;position:sticky;top:0;background:var(--card);z-index:2;}
   table.voters td{padding:9px 10px;border-bottom:1px solid var(--rule);vertical-align:top;}
   table.voters tr{transition:background .15s ease;}
   table.voters tr:hover td{background:var(--card-hi);}
@@ -136,6 +142,32 @@
   .relname{color:var(--ink-soft);font-size:.82rem;display:block;margin-top:5px;}
   .relname .te{font-size:.78rem;color:var(--ink-faint);}
   .table-scroll{max-height:560px;overflow:auto;border:1px solid var(--rule);border-radius:3px;}
+
+  /* ---------- verification status column ---------- */
+  td.st-cell{min-width:190px;}
+  .st-select{font-family:inherit;font-size:.85rem;padding:6px 8px;border-radius:3px;background:var(--paper);color:var(--ink);border:1px solid var(--rule-strong);width:100%;}
+  .st-select:focus{outline:none;border-color:var(--accent);}
+  .st-select.s-Pending{border-color:rgba(217,164,65,.6);color:var(--pending);}
+  .st-select.s-Covered{border-color:rgba(95,179,148,.6);color:var(--covered);}
+  .st-select.s-Other{border-color:rgba(143,166,224,.6);color:var(--other);}
+  .st-comment{font-family:inherit;font-size:.82rem;padding:6px 8px;border-radius:3px;background:var(--paper);color:var(--ink);border:1px solid var(--rule-strong);width:100%;margin-top:6px;}
+  .st-comment:focus{outline:none;border-color:var(--accent);}
+  .sbadge{display:inline-block;font-size:.78rem;font-weight:600;padding:3px 9px;border-radius:20px;border:1px solid var(--rule-strong);}
+  .sbadge.s-Pending{color:var(--pending);border-color:rgba(217,164,65,.5);background:rgba(217,164,65,.1);}
+  .sbadge.s-Covered{color:var(--covered);border-color:rgba(95,179,148,.5);background:rgba(95,179,148,.1);}
+  .sbadge.s-Other{color:var(--other);border-color:rgba(143,166,224,.5);background:rgba(143,166,224,.1);}
+  .st-note{display:block;margin-top:5px;font-size:.78rem;color:var(--ink-soft);line-height:1.4;word-break:break-word;}
+  .st-meta{display:block;margin-top:4px;font-size:.72rem;color:var(--ink-faint);}
+  .st-hist{background:none;border:none;color:var(--accent-2);font-size:.75rem;cursor:pointer;padding:0;margin-top:3px;text-decoration:underline;font-family:inherit;}
+  .st-hist:hover{color:#68a598;}
+
+  .hist-list{max-height:55vh;overflow:auto;margin:0 0 16px;padding:0;list-style:none;}
+  .hist-list li{padding:10px 0;border-bottom:1px solid var(--rule);font-size:.88rem;line-height:1.5;}
+  .hist-list li:last-child{border-bottom:none;}
+  .hist-list .when{display:block;color:var(--ink-faint);font-size:.76rem;font-family:'IBM Plex Mono',monospace;}
+  .hist-list .by{color:var(--ink);font-weight:600;}
+  .hist-list .arrow{color:var(--ink-faint);margin:0 4px;}
+  .hist-list .cm{display:block;color:var(--ink-soft);font-size:.82rem;}
 
   .empty{padding:40px 20px;text-align:center;color:var(--ink-soft);border:1px dashed var(--rule-strong);background:var(--card);border-radius:3px;}
   .empty strong{display:block;color:var(--ink);font-size:1.02rem;margin-bottom:4px;font-weight:600;}
@@ -165,6 +197,7 @@
   .modal-btn:hover{border-color:var(--accent);background:var(--accent-soft);}
   .modal-btn.primary{background:var(--accent);color:#1a1305;border-color:var(--accent);font-weight:600;}
   .modal-btn.primary:hover{background:#d6a44e;}
+  .modal-btn:disabled{opacity:.6;cursor:default;}
 
   /* ---------- brand ---------- */
   .brand{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;}
@@ -231,6 +264,7 @@
     </div>
     <div class="topnav-right">
       <span class="admin-status" id="adminStatus"></span>
+      <button class="btn ghost" id="btnMemberSignIn">Member sign in</button>
       <button class="btn ghost" id="btnSignIn">Admin sign in</button>
       <button class="btn ghost" id="btnSignOut" style="display:none;">Sign out</button>
       <a class="backlink" id="btnHome">← Home</a>
@@ -254,6 +288,26 @@
       Uploading new data requires the site owner to sign in. <a id="noAdminSignInLink" style="color:var(--accent-2);cursor:pointer;text-decoration:underline;">Sign in</a>
     </div>
     <div id="log"></div>
+  </section>
+
+  <!-- Admin only: verification members -->
+  <section id="membersSection" style="display:none;">
+    <h2 class="section-title">Verification members</h2>
+    <p class="hint">Add the name, mobile number, ward(s) and a password for each person who may update the verification Status. Several members can share a ward. Members sign in with their mobile number and the password you set here, and can edit only voters in their own ward(s). Separate multiple wards with commas (e.g. <span style="font-family:'IBM Plex Mono',monospace;">3, 4</span>). To change a password, click Edit, enter the new one and choose Update member.</p>
+    <div class="controls member-form">
+      <input type="text" id="mName" placeholder="Member name">
+      <input type="tel" id="mPhone" placeholder="Mobile (10 digits)">
+      <input type="text" id="mWards" placeholder="Ward(s), e.g. 5 or 5, 6">
+      <input type="text" id="mPassword" placeholder="Password (min 6 characters)" autocomplete="off">
+      <button class="btn" id="btnAddMember">Add member</button>
+      <button class="btn ghost" id="btnClearMember" style="display:none;">Cancel edit</button>
+    </div>
+    <div style="margin-top:14px;overflow-x:auto;">
+      <table class="parts">
+        <thead><tr><th>Name</th><th>Mobile</th><th>Ward(s)</th><th>Password</th><th></th></tr></thead>
+        <tbody id="membersBody"></tbody>
+      </table>
+    </div>
   </section>
 
   <section id="statsSection" style="display:none;">
@@ -288,6 +342,12 @@
         <option value="Female">Female</option>
         <option value="Third Gender">Third gender</option>
       </select>
+      <select id="fStatus" style="display:none;">
+        <option value="">Any status</option>
+        <option value="Pending">Pending</option>
+        <option value="Covered">Covered</option>
+        <option value="Other">Other</option>
+      </select>
       <button class="btn" id="btnSearch">Search</button>
       <button class="btn ghost" id="btnReset">Reset</button>
     </div>
@@ -298,7 +358,7 @@
     <div id="resultsWrap"></div>
   </section>
 
-  <footer>Voter data is stored in a shared database and searchable from any device. Only the signed-in site owner can add, update, or remove data — search itself needs no login.</footer>
+  <footer>Voter data is stored in a shared database and searchable from any device. Only the signed-in site owner can add, update, or remove data — search itself needs no login. The verification Status column is visible only to the owner and approved members.</footer>
 </div>
 </div>
 
@@ -319,13 +379,54 @@ const db = firebase.firestore();
 // ---------- state ----------
 let PARTS = {};     // partKey (= file name) -> {partKey, fileName, count, wards[], docIds[]}
 let VOTERS = [];    // flat list of voter records
+let VOTER_BY_KEY = {};
 let isAdmin = false;
+
+// Verification status
+let ROLE = null;            // null | 'admin' | 'member'
+let ME = {name:'', phone:'', wards:[]};
+let STATUS = {};            // voterKey -> status doc
+let MEMBERS = [];           // admin only
+let statusUnsub = null, membersUnsub = null, memberDocUnsub = null;
+const draftOther = new Set();   // voter keys where "Other" is chosen but comment not yet saved
+const STATUS_OPTIONS = ['Pending','Covered','Other'];
 
 let currentResults = [];
 
 // A Firestore document is limited to ~1 MB. A whole roll (Telugu + English names)
 // is bigger than that, so each file is stored as several "chunk" documents.
 const CHUNK_SIZE = 600;
+
+// Members sign in with Firebase email+password using a derived address: <digits>@members.namavali.app
+const MEMBER_DOMAIN = 'members.namavali.app';
+function memberEmail(phone){ return phone.replace(/\D/g,'') + '@' + MEMBER_DOMAIN; }
+function memberIdFromEmail(email){ return email.split('@')[0]; }
+
+// A second Firebase app instance lets the admin create/update member accounts
+// without being signed out of the admin session.
+let secAuthPromise = null;
+function getSecAuth(){
+  if(!secAuthPromise){
+    secAuthPromise = (async () => {
+      const app = firebase.apps.find(a => a.name === 'secondary') || firebase.initializeApp(firebaseConfig, 'secondary');
+      const a = app.auth();
+      await a.setPersistence(firebase.auth.Auth.Persistence.NONE);
+      return a;
+    })();
+  }
+  return secAuthPromise;
+}
+
+function canSeeStatus(){ return ROLE === 'admin' || ROLE === 'member'; }
+function canEdit(v){
+  if(ROLE === 'admin') return true;
+  if(ROLE === 'member') return !!v.ward && ME.wards.includes(String(v.ward));
+  return false;
+}
+function voterKey(v, partKey){
+  const raw = v.epic ? 'E_' + v.epic : `S_${partKey}_${v.ward||''}_${v.serial||''}`;
+  return raw.replace(/[\/\s.]+/g,'-').slice(0, 300);
+}
 
 // ---------- screen navigation ----------
 function showScreen(id){
@@ -373,6 +474,9 @@ function showModal({title, message, buttons}){
     overlay.addEventListener('click', e=>{ if(e.target===overlay){ cleanup(); resolve(null); } });
   });
 }
+function notify(title, message){
+  return showModal({title, message, buttons:[{label:'OK', value:'ok', primary:true}]});
+}
 
 const logEl = document.getElementById('log');
 function log(msg, cls){
@@ -394,7 +498,7 @@ function subscribeToParts(){
       (groups[d.partKey] = groups[d.partKey] || []).push({id: doc.id, d});
     });
 
-    PARTS = {}; VOTERS = [];
+    PARTS = {}; VOTERS = []; VOTER_BY_KEY = {};
     Object.keys(groups).forEach(key => {
       const docs = groups[key].sort((a,b) => (a.d.chunk||0) - (b.d.chunk||0));
       const fileName = docs[0].d.fileName || key;
@@ -405,7 +509,11 @@ function subscribeToParts(){
       const wards = Array.from(wardSet).sort((a,b) => Number(a) - Number(b));
 
       PARTS[key] = { partKey: key, fileName, count: voters.length, wards, docIds: docs.map(x => x.id) };
-      voters.forEach(v => VOTERS.push({...v, partKey: key, sourceFile: fileName}));
+      voters.forEach(v => {
+        const rec = {...v, partKey: key, sourceFile: fileName, key: voterKey(v, key)};
+        VOTERS.push(rec);
+        VOTER_BY_KEY[rec.key] = rec;
+      });
     });
     refreshAll();
   }, err => {
@@ -438,18 +546,94 @@ async function removePart(partKey){
   catch(e){ log(`Could not remove ${p.fileName}: ${e.message}`, 'err'); }
 }
 
-// ---------- admin auth ----------
-function updateAdminUI(user){
-  isAdmin = !!user;
-  document.getElementById('adminStatus').textContent = isAdmin ? `Signed in as ${user.email}` : '';
-  document.getElementById('btnSignIn').style.display = isAdmin ? 'none' : 'inline-flex';
-  document.getElementById('btnSignOut').style.display = isAdmin ? 'inline-flex' : 'none';
+// ---------- auth & roles ----------
+function applyRole(){
+  isAdmin = ROLE === 'admin';
+  const signedIn = ROLE !== null;
+  let label = '';
+  if(ROLE === 'admin') label = `Signed in as ${ME.phone}`;
+  if(ROLE === 'member') label = `${ME.name} · Ward ${ME.wards.join(', ')} · ${ME.phone}`;
+  document.getElementById('adminStatus').textContent = label;
+  document.getElementById('btnSignIn').style.display = signedIn ? 'none' : 'inline-flex';
+  document.getElementById('btnMemberSignIn').style.display = signedIn ? 'none' : 'inline-flex';
+  document.getElementById('btnSignOut').style.display = signedIn ? 'inline-flex' : 'none';
   document.getElementById('dropzone').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('noAdminMsg').style.display = isAdmin ? 'none' : 'block';
+  document.getElementById('membersSection').style.display = isAdmin ? 'block' : 'none';
+  document.getElementById('fStatus').style.display = canSeeStatus() ? '' : 'none';
+  if(!canSeeStatus()) document.getElementById('fStatus').value = '';
   renderStats();
   renderPartsTable();
+  renderMembers();
+  runSearch();
 }
-auth.onAuthStateChanged(updateAdminUI);
+
+function stopListeners(){
+  if(statusUnsub){ statusUnsub(); statusUnsub = null; }
+  if(membersUnsub){ membersUnsub(); membersUnsub = null; }
+  if(memberDocUnsub){ memberDocUnsub(); memberDocUnsub = null; }
+  STATUS = {}; MEMBERS = []; draftOther.clear();
+}
+
+function startStatusListener(){
+  if(statusUnsub) return;
+  statusUnsub = db.collection('status').onSnapshot(snap => {
+    STATUS = {};
+    snap.forEach(d => { STATUS[d.id] = d.data(); });
+    runSearch();
+  }, err => { log('Could not load verification status: ' + err.message, 'err'); });
+}
+
+function startMembersListener(){
+  if(membersUnsub) return;
+  membersUnsub = db.collection('members').onSnapshot(snap => {
+    MEMBERS = [];
+    snap.forEach(d => MEMBERS.push({id: d.id, ...d.data()}));
+    MEMBERS.sort((a,b) => (a.name||'').localeCompare(b.name||''));
+    renderMembers();
+  }, err => { log('Could not load members: ' + err.message, 'err'); });
+}
+
+auth.onAuthStateChanged(user => {
+  stopListeners();
+  ROLE = null; ME = {name:'', phone:'', wards:[]};
+
+  if(!user){ applyRole(); return; }
+
+  if(user.email && user.email.endsWith('@' + MEMBER_DOMAIN)){
+    // Member account (mobile number + password). Real enforcement is in the Firestore rules.
+    const id = memberIdFromEmail(user.email);
+    memberDocUnsub = db.collection('members').doc(id).onSnapshot(doc => {
+      if(!doc.exists){
+        ROLE = null;
+        notify('Access removed', 'This number is not registered as a verification member. Please contact the site owner.');
+        auth.signOut();
+        return;
+      }
+      const d = doc.data();
+      ROLE = 'member';
+      ME = {name: d.name || 'Member', phone: d.phone || id, wards: (d.wards||[]).map(String)};
+      applyRole();
+      startStatusListener();
+    }, err => {
+      notify('Could not verify access', err.message);
+      auth.signOut();
+    });
+    return;
+  }
+
+  if(user.email){
+    // Owner account (email + password). Real enforcement is in the Firestore rules.
+    ROLE = 'admin';
+    ME = {name:'Admin', phone:user.email, wards:[]};
+    applyRole();
+    startStatusListener();
+    startMembersListener();
+    return;
+  }
+
+  applyRole();
+});
 
 function openLoginModal(){
   const overlay = document.createElement('div');
@@ -458,7 +642,7 @@ function openLoginModal(){
   box.className = 'modal-box';
   box.innerHTML = `
     <h3>Admin sign in</h3>
-    <p>Sign in with the site owner's account to add or remove data.</p>
+    <p>Sign in with the site owner's account to add or remove data and manage members.</p>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">
       <input type="email" id="loginEmail" class="login-field" placeholder="Email" autocomplete="username">
       <input type="password" id="loginPassword" class="login-field" placeholder="Password" autocomplete="current-password">
@@ -503,9 +687,371 @@ function openLoginModal(){
   signInBtn.addEventListener('click', attemptSignIn);
   box.querySelector('#loginPassword').addEventListener('keydown', e=>{ if(e.key==='Enter') attemptSignIn(); });
 }
+
+// phone helpers: returns E.164 (+91XXXXXXXXXX) or null
+function normPhone(s){
+  s = String(s||'').trim();
+  const plus = s.startsWith('+');
+  const d = s.replace(/\D/g,'');
+  if(plus) return d.length >= 8 ? '+' + d : null;
+  if(d.length === 10) return '+91' + d;
+  if(d.length === 12 && d.startsWith('91')) return '+' + d;
+  if(d.length === 11 && d.startsWith('0')) return '+91' + d.slice(1);
+  return null;
+}
+
+function openMemberLoginModal(){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const box = document.createElement('div');
+  box.className = 'modal-box';
+  box.innerHTML = `
+    <h3>Member sign in</h3>
+    <p>Sign in with the mobile number the site owner registered for you and the password they gave you.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;">
+      <input type="tel" id="mLoginPhone" class="login-field" placeholder="Mobile number (10 digits)" autocomplete="username">
+      <input type="password" id="mLoginPass" class="login-field" placeholder="Password" autocomplete="current-password">
+      <div id="mLoginError" class="login-error"></div>
+    </div>`;
+  const btnRow = document.createElement('div');
+  btnRow.className = 'modal-buttons';
+  const goBtn = document.createElement('button');
+  goBtn.className = 'modal-btn primary';
+  goBtn.textContent = 'Sign in';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'modal-btn';
+  cancelBtn.textContent = 'Cancel';
+  btnRow.appendChild(goBtn);
+  btnRow.appendChild(cancelBtn);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+
+  const phoneEl = box.querySelector('#mLoginPhone');
+  const passEl = box.querySelector('#mLoginPass');
+  const errEl = box.querySelector('#mLoginError');
+  function cleanup(){ overlay.classList.remove('show'); setTimeout(()=> overlay.remove(), 200); }
+  cancelBtn.addEventListener('click', cleanup);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) cleanup(); });
+
+  async function go(){
+    errEl.style.display = 'none';
+    const phone = normPhone(phoneEl.value);
+    if(!phone || !passEl.value){
+      errEl.textContent = 'Enter your mobile number and password.';
+      errEl.style.display = 'block';
+      return;
+    }
+    goBtn.disabled = true; goBtn.textContent = 'Signing in…';
+    try{
+      await auth.signInWithEmailAndPassword(memberEmail(phone), passEl.value);
+      cleanup();
+    }catch(e){
+      errEl.textContent = e.code === 'auth/too-many-requests'
+        ? 'Too many attempts. Please try again later.'
+        : 'Sign-in failed — check your mobile number and password.';
+      errEl.style.display = 'block';
+      goBtn.disabled = false; goBtn.textContent = 'Sign in';
+    }
+  }
+  goBtn.addEventListener('click', go);
+  phoneEl.addEventListener('keydown', e=>{ if(e.key==='Enter') go(); });
+  passEl.addEventListener('keydown', e=>{ if(e.key==='Enter') go(); });
+}
+
 document.getElementById('btnSignIn').addEventListener('click', openLoginModal);
+document.getElementById('btnMemberSignIn').addEventListener('click', openMemberLoginModal);
 document.getElementById('noAdminSignInLink').addEventListener('click', openLoginModal);
 document.getElementById('btnSignOut').addEventListener('click', ()=> auth.signOut());
+
+// ---------- member management (admin) ----------
+function parseWards(s){
+  return Array.from(new Set(String(s||'').split(/[,\s;]+/).map(x => x.trim()).filter(Boolean)));
+}
+
+function renderMembers(){
+  const body = document.getElementById('membersBody');
+  if(!body) return;
+  body.innerHTML = '';
+  if(!isAdmin) return;
+  if(!MEMBERS.length){
+    body.innerHTML = '<tr><td colspan="5" style="color:var(--ink-soft);">No members added yet.</td></tr>';
+    return;
+  }
+  MEMBERS.forEach(m => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(m.name||'')}</td>
+      <td class="partserial">${escapeHtml(m.phone||m.id)}</td>
+      <td>${escapeHtml((m.wards||[]).join(', '))}</td>
+      <td><span class="partserial pw-text" data-pw="${escapeHtml(m.password||'')}">••••••</span>
+          <button class="st-hist" data-showpw="1" style="margin-left:6px;">Show</button></td>
+      <td style="white-space:nowrap;">
+        <button class="ed-btn" data-edit="${escapeHtml(m.id)}">Edit</button>
+        <button class="rm-btn" data-del="${escapeHtml(m.id)}">Remove</button>
+      </td>`;
+    body.appendChild(tr);
+  });
+}
+
+function resetMemberForm(){
+  document.getElementById('mName').value = '';
+  document.getElementById('mPhone').value = '';
+  document.getElementById('mPhone').disabled = false;
+  document.getElementById('mWards').value = '';
+  document.getElementById('mPassword').value = '';
+  document.getElementById('btnAddMember').textContent = 'Add member';
+  document.getElementById('btnClearMember').style.display = 'none';
+}
+
+document.getElementById('membersBody').addEventListener('click', async e => {
+  const sp = e.target.closest('[data-showpw]');
+  if(sp){
+    const span = sp.parentElement.querySelector('.pw-text');
+    const shown = sp.textContent === 'Hide';
+    span.textContent = shown ? '••••••' : span.getAttribute('data-pw');
+    sp.textContent = shown ? 'Show' : 'Hide';
+    return;
+  }
+  const ed = e.target.closest('[data-edit]');
+  const del = e.target.closest('[data-del]');
+  if(ed){
+    const m = MEMBERS.find(x => x.id === ed.getAttribute('data-edit'));
+    if(!m) return;
+    document.getElementById('mName').value = m.name || '';
+    document.getElementById('mPhone').value = m.phone || m.id;
+    document.getElementById('mPhone').disabled = true;     // number is the login id
+    document.getElementById('mWards').value = (m.wards||[]).join(', ');
+    document.getElementById('mPassword').value = m.password || '';
+    document.getElementById('btnAddMember').textContent = 'Update member';
+    document.getElementById('btnClearMember').style.display = 'inline-block';
+    document.getElementById('mName').focus();
+  }
+  if(del){
+    const m = MEMBERS.find(x => x.id === del.getAttribute('data-del'));
+    if(!m) return;
+    const c = await showModal({
+      title: 'Remove member?',
+      message: `${m.name} (${m.phone||m.id}) will immediately lose access to the Status column. Past history stays recorded.`,
+      buttons: [{label:'Remove member', value:'yes', primary:true},{label:'Cancel', value:'no'}]
+    });
+    if(c !== 'yes') return;
+    try{
+      await db.collection('members').doc(m.id).delete();   // access is revoked as soon as this is gone
+    }catch(err){ notify('Could not remove member', err.message); return; }
+    // also delete their login account so the number can be re-added later
+    try{
+      const sa = await getSecAuth();
+      await sa.signInWithEmailAndPassword(memberEmail(m.phone || m.id), m.password);
+      await sa.currentUser.delete();
+    }catch(err){
+      try{ (await getSecAuth()).signOut(); }catch(_){}
+      notify('Member removed', 'Access has been revoked. The old login account could not be deleted automatically; if you re-add this number later, use the same password as before.');
+    }
+  }
+});
+document.getElementById('btnClearMember').addEventListener('click', resetMemberForm);
+document.getElementById('btnAddMember').addEventListener('click', async () => {
+  if(!isAdmin) return;
+  const btn = document.getElementById('btnAddMember');
+  const name = document.getElementById('mName').value.trim();
+  const phone = normPhone(document.getElementById('mPhone').value);
+  const wards = parseWards(document.getElementById('mWards').value);
+  const pw = document.getElementById('mPassword').value;
+  if(!name){ notify('Missing name', 'Please enter the member\'s name.'); return; }
+  if(!phone){ notify('Invalid mobile number', 'Enter a 10-digit mobile number (or full number with country code).'); return; }
+  if(!wards.length){ notify('Missing ward', 'Enter at least one ward number.'); return; }
+  if(pw.length < 6){ notify('Password too short', 'The password must be at least 6 characters.'); return; }
+
+  const known = new Set(VOTERS.map(v => String(v.ward)).filter(Boolean));
+  const unknown = known.size ? wards.filter(w => !known.has(w)) : [];
+  if(unknown.length){
+    const c = await showModal({
+      title: 'Ward not found in loaded data',
+      message: `Ward ${unknown.join(', ')} doesn't appear in any loaded file. Save anyway?`,
+      buttons: [{label:'Save anyway', value:'yes', primary:true},{label:'Go back', value:'no'}]
+    });
+    if(c !== 'yes') return;
+  }
+
+  const id = phone.replace(/\D/g,'');
+  const email = memberEmail(phone);
+  const existing = MEMBERS.find(m => m.id === id);
+  btn.disabled = true;
+  try{
+    const sa = await getSecAuth();
+    if(!existing){
+      try{
+        await sa.createUserWithEmailAndPassword(email, pw);
+      }catch(e){
+        if(e.code === 'auth/email-already-in-use'){
+          // leftover login from an earlier member: reuse it if the password matches
+          try{ await sa.signInWithEmailAndPassword(email, pw); }
+          catch(_){ throw new Error('A login for this number already exists with a different password. Use the password it had before.'); }
+        } else if(e.code === 'auth/weak-password'){
+          throw new Error('Password is too weak. Use at least 6 characters.');
+        } else throw e;
+      }
+      await sa.signOut();
+    } else if(existing.password !== pw){
+      await sa.signInWithEmailAndPassword(email, existing.password);
+      await sa.currentUser.updatePassword(pw);
+      await sa.signOut();
+    }
+    await db.collection('members').doc(id).set({
+      name, phone, wards, password: pw,
+      addedBy: ME.phone,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    resetMemberForm();
+  }catch(err){
+    try{ (await getSecAuth()).signOut(); }catch(_){}
+    notify('Could not save member', err.message);
+  }
+  btn.disabled = false;
+});
+
+// ---------- verification status: save & history ----------
+function fmtTime(ts){
+  if(!ts) return 'just now';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleString([], {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+}
+
+async function saveStatus(v, newStatus, comment){
+  if(!canEdit(v)) return;
+  const prev = STATUS[v.key] || {status:'Pending', comment:''};
+  const prevComment = prev.comment || '';
+  if(prev.status === newStatus && prevComment === comment) return;
+
+  const ts = firebase.firestore.FieldValue.serverTimestamp();
+  const ward = String(v.ward || '');
+  const ref = db.collection('status').doc(v.key);
+  const batch = db.batch();
+  batch.set(ref, {
+    status: newStatus, comment,
+    ward, epic: v.epic || '', name: v.nameEn || v.name || '',
+    updatedBy: ME.name, updatedByPhone: ME.phone, updatedAt: ts
+  });
+  batch.set(ref.collection('history').doc(), {
+    from: prev.status, fromComment: prevComment,
+    to: newStatus, toComment: comment,
+    ward, by: ME.name, byPhone: ME.phone, at: ts
+  });
+  try{
+    await batch.commit();
+    draftOther.delete(v.key);
+  }catch(e){
+    notify('Could not save change', e.code === 'permission-denied'
+      ? 'You do not have permission to change this voter (check your ward access).'
+      : e.message);
+    runSearch();
+  }
+}
+
+async function openHistory(key){
+  const v = VOTER_BY_KEY[key];
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  const box = document.createElement('div');
+  box.className = 'modal-box';
+  box.style.maxWidth = '520px';
+  box.innerHTML = `<h3>Status history</h3>
+    <p style="margin-bottom:12px;">${escapeHtml(v ? (v.nameEn || v.name || '') : '')} ${v && v.epic ? '· ' + escapeHtml(v.epic) : ''}</p>
+    <ul class="hist-list"><li style="color:var(--ink-soft);">Loading…</li></ul>`;
+  const btnRow = document.createElement('div');
+  btnRow.className = 'modal-buttons';
+  const close = document.createElement('button');
+  close.className = 'modal-btn primary';
+  close.textContent = 'Close';
+  btnRow.appendChild(close);
+  box.appendChild(btnRow);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  requestAnimationFrame(()=> overlay.classList.add('show'));
+  const cleanup = ()=>{ overlay.classList.remove('show'); setTimeout(()=> overlay.remove(), 200); };
+  close.addEventListener('click', cleanup);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) cleanup(); });
+
+  const list = box.querySelector('.hist-list');
+  try{
+    const snap = await db.collection('status').doc(key).collection('history').orderBy('at','desc').get();
+    if(snap.empty){ list.innerHTML = '<li style="color:var(--ink-soft);">No changes recorded yet. Status is Pending.</li>'; return; }
+    list.innerHTML = '';
+    snap.forEach(doc => {
+      const h = doc.data();
+      const li = document.createElement('li');
+      const fromTxt = h.from + (h.from === 'Other' && h.fromComment ? ` (“${h.fromComment}”)` : '');
+      const toTxt = h.to + (h.to === 'Other' && h.toComment ? ` (“${h.toComment}”)` : '');
+      li.innerHTML = `<span class="when">${escapeHtml(fmtTime(h.at))}</span>
+        <span class="by">${escapeHtml(h.by||'')}</span> <span style="color:var(--ink-faint);font-size:.78rem;">${escapeHtml(h.byPhone||'')}</span><br>
+        <span>${escapeHtml(fromTxt)}</span><span class="arrow">→</span><span>${escapeHtml(toTxt)}</span>`;
+      list.appendChild(li);
+    });
+  }catch(e){
+    list.innerHTML = `<li style="color:#e08a7d;">Could not load history: ${escapeHtml(e.message)}</li>`;
+  }
+}
+
+// event delegation for the status column
+const resultsWrap = document.getElementById('resultsWrap');
+resultsWrap.addEventListener('change', e => {
+  const sel = e.target.closest('.st-select');
+  const cm = e.target.closest('.st-comment');
+  if(sel){
+    const key = sel.getAttribute('data-key');
+    const v = VOTER_BY_KEY[key];
+    if(!v) return;
+    const val = sel.value;
+    sel.className = 'st-select s-' + val;
+    const input = sel.parentElement.querySelector('.st-comment');
+    if(val === 'Other'){
+      draftOther.add(key);
+      if(input){ input.style.display = 'block'; input.focus(); }
+    } else {
+      if(input) input.style.display = 'none';
+      draftOther.delete(key);
+      saveStatus(v, val, '');
+    }
+  } else if(cm){
+    const key = cm.getAttribute('data-key');
+    const v = VOTER_BY_KEY[key];
+    if(!v) return;
+    const text = cm.value.trim();
+    if(!text){ return; }   // a comment is required for "Other"
+    saveStatus(v, 'Other', text);
+  }
+});
+resultsWrap.addEventListener('keydown', e => {
+  if(e.key === 'Enter' && e.target.classList.contains('st-comment')) e.target.blur();
+});
+resultsWrap.addEventListener('click', e => {
+  const h = e.target.closest('.st-hist');
+  if(h) openHistory(h.getAttribute('data-key'));
+});
+
+function statusCellHtml(v){
+  const cur = STATUS[v.key];
+  const stored = cur ? cur.status : 'Pending';
+  const comment = cur ? (cur.comment || '') : '';
+  const val = draftOther.has(v.key) ? 'Other' : stored;
+  const k = escapeHtml(v.key);
+  let html = '';
+  if(canEdit(v)){
+    html += `<select class="st-select s-${val}" data-key="${k}">` +
+      STATUS_OPTIONS.map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('') + `</select>`;
+    html += `<input type="text" class="st-comment" data-key="${k}" placeholder="Write a comment…" maxlength="300" value="${escapeHtml(comment)}" style="display:${val==='Other'?'block':'none'};">`;
+  } else {
+    html += `<span class="sbadge s-${val}">${val}</span>`;
+    if(val === 'Other' && comment) html += `<span class="st-note">${escapeHtml(comment)}</span>`;
+  }
+  if(cur && cur.updatedBy){
+    html += `<span class="st-meta">${escapeHtml(cur.updatedBy)} · ${escapeHtml(fmtTime(cur.updatedAt))}</span>`;
+  }
+  html += `<button class="st-hist" data-key="${k}">History</button>`;
+  return html;
+}
 
 // ---------- column-name normalization ----------
 // Headers are lower-cased and stripped of everything except letters/digits,
@@ -734,16 +1280,20 @@ function escapeHtml(s){
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+function statusOf(v){ return STATUS[v.key] ? STATUS[v.key].status : 'Pending'; }
+
 function runSearch(){
   const q = document.getElementById('q').value.trim().toLowerCase();
   const partKey = document.getElementById('fPart').value;
   const ward = document.getElementById('fWard').value;
   const gender = document.getElementById('fGender').value;
+  const sFilter = canSeeStatus() ? document.getElementById('fStatus').value : '';
 
   let results = VOTERS;
   if(partKey) results = results.filter(v => v.partKey === partKey);
   if(ward) results = results.filter(v => String(v.ward) === ward);
   if(gender) results = results.filter(v => v.gender && v.gender.toLowerCase() === gender.toLowerCase());
+  if(sFilter) results = results.filter(v => statusOf(v) === sFilter);
   if(q){
     results = results.filter(v =>
       (v.name||'').toLowerCase().includes(q) ||
@@ -761,6 +1311,7 @@ function renderResults(results){
   const wrap = document.getElementById('resultsWrap');
   const meta = document.getElementById('resultCount');
   const exportLink = document.getElementById('btnExport');
+  const showStatus = canSeeStatus();
 
   if(VOTERS.length === 0){
     wrap.innerHTML = `<div class="empty"><strong>No voter rolls loaded yet</strong>Add one or more CSV files above to start searching.</div>`;
@@ -797,12 +1348,13 @@ function renderResults(results){
       <td><span class="gdot ${gcls}"></span>${escapeHtml(v.gender||'')}</td>
       <td class="partserial">${escapeHtml(v.ward||'—')}</td>
       <td class="partserial">${escapeHtml(v.serial||'')}</td>
+      ${showStatus ? `<td class="st-cell">${statusCellHtml(v)}</td>` : ''}
     </tr>`;
   }).join('');
 
   wrap.innerHTML = `<div class="table-scroll"><table class="voters">
     <thead><tr>
-      <th>EPIC</th><th>Name</th><th>Age</th><th>Gender</th><th>Ward</th><th>Serial</th>
+      <th>EPIC</th><th>Name</th><th>Age</th><th>Gender</th><th>Ward</th><th>Serial</th>${showStatus ? '<th>Status</th>' : ''}
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
@@ -810,9 +1362,17 @@ function renderResults(results){
 
 function exportCsv(){
   if(!currentResults.length) return;
-  const headers = ['Serial No','Ward No','Name','Name (English)','Relation Type','Relation Name','Relation Name (English)','Age','Gender','EPIC No'];
-  const rows = currentResults.map(v => [v.serial,v.ward,v.name,v.nameEn,v.relationType,v.relationName,v.relationNameEn,v.age,v.gender,v.epic]
-    .map(f => `"${String(f??'').replace(/"/g,'""')}"`).join(','));
+  const withStatus = canSeeStatus();
+  const headers = ['Serial No','Ward No','Name','Name (English)','Relation Type','Relation Name','Relation Name (English)','Age','Gender','EPIC No']
+    .concat(withStatus ? ['Status','Status Comment','Last Updated By'] : []);
+  const rows = currentResults.map(v => {
+    const base = [v.serial,v.ward,v.name,v.nameEn,v.relationType,v.relationName,v.relationNameEn,v.age,v.gender,v.epic];
+    if(withStatus){
+      const s = STATUS[v.key];
+      base.push(s ? s.status : 'Pending', s ? (s.comment||'') : '', s ? (s.updatedBy||'') : '');
+    }
+    return base.map(f => `"${String(f??'').replace(/"/g,'""')}"`).join(',');
+  });
   const csv = '\ufeff' + [headers.map(h => `"${h}"`).join(',')].concat(rows).join('\r\n');   // BOM so Excel reads Telugu correctly
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
@@ -827,11 +1387,13 @@ document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter'
 document.getElementById('fPart').addEventListener('change', runSearch);
 document.getElementById('fWard').addEventListener('change', runSearch);
 document.getElementById('fGender').addEventListener('change', runSearch);
+document.getElementById('fStatus').addEventListener('change', runSearch);
 document.getElementById('btnReset').addEventListener('click', ()=>{
   document.getElementById('q').value='';
   document.getElementById('fPart').value='';
   document.getElementById('fWard').value='';
   document.getElementById('fGender').value='';
+  document.getElementById('fStatus').value='';
   runSearch();
 });
 document.getElementById('btnExport').addEventListener('click', exportCsv);
