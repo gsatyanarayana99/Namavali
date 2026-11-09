@@ -61,6 +61,14 @@
 
   @media (max-width:800px){ .features{grid-template-columns:1fr;} }
 
+  /* ---------- village picker ---------- */
+  .vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:8px;}
+  .vcard{background:var(--card);border:1px solid var(--rule);border-radius:3px;padding:20px;cursor:pointer;transition:border-color .2s,transform .2s,background .2s;}
+  .vcard:hover{border-color:var(--accent);background:var(--card-hi);transform:translateY(-2px);}
+  .vcard h3{margin:0 0 6px;font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:1.2rem;}
+  .vcard span{color:var(--ink-soft);font-size:.85rem;}
+  #villageName{color:var(--accent);}
+
   /* ---------- app page ---------- */
   .backlink{
     display:inline-flex;align-items:center;gap:6px;color:var(--ink-soft);
@@ -236,7 +244,7 @@
         <div class="feature">
           <span class="fnum">01</span>
           <h4>Upload CSVs</h4>
-          <p>Add one file at a time, or several at once. Duplicate files are caught before anything gets overwritten by mistake.</p>
+          <p>Add one file at a time, or several at once, village by village. Duplicate files are caught before anything gets overwritten by mistake.</p>
         </div>
         <div class="feature">
           <span class="fnum">02</span>
@@ -249,6 +257,32 @@
           <p>Data lives in a shared database, so anyone with the link can search from any device. Only the signed-in owner can change it.</p>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= VILLAGE PICKER ================= -->
+<div class="screen" id="screen-village">
+  <div class="wrap">
+    <div class="brand-row">
+      <div class="brand" id="brandVillage">
+        <span class="mark"><svg viewBox="0 0 64 64"><rect x="16" y="16" width="8" height="32" rx="1.5" fill="#c9973f"/><rect x="40" y="16" width="8" height="32" rx="1.5" fill="#c9973f"/><line x1="20" y1="16" x2="44" y2="48" stroke="#c9973f" stroke-width="8" stroke-linecap="round"/></svg></span>
+        <span class="word">Namavali</span>
+      </div>
+      <div class="topnav-right">
+        <button class="btn ghost" id="btnVMember">Member sign in</button>
+        <button class="btn ghost" id="btnVAdmin">Admin sign in</button>
+        <a class="backlink" id="btnVHome">← Home</a>
+      </div>
+    </div>
+    <header class="page">
+      <h1>Select a village</h1>
+      <p>Choose the village whose voter roll you want to open.</p>
+    </header>
+    <div id="villageGrid" class="vgrid"></div>
+    <div id="newVillageBox" class="controls" style="display:none;margin-top:24px;">
+      <input type="text" id="newVillageName" placeholder="New village name (admin only)">
+      <button class="btn" id="btnNewVillage">Create &amp; open</button>
     </div>
   </div>
 </div>
@@ -267,12 +301,13 @@
       <button class="btn ghost" id="btnMemberSignIn">Member sign in</button>
       <button class="btn ghost" id="btnSignIn">Admin sign in</button>
       <button class="btn ghost" id="btnSignOut" style="display:none;">Sign out</button>
+      <a class="backlink" id="btnChangeVillage">⇄ Change village</a>
       <a class="backlink" id="btnHome">← Home</a>
     </div>
   </div>
 
   <header class="page">
-    <h1>Voter Roll Register</h1>
+    <h1>Voter Roll Register — <span id="villageName"></span></h1>
     <p>Search the voter rolls by name (English or Telugu), relation name or EPIC number. Filter by ward, gender or file.</p>
   </header>
 
@@ -280,7 +315,7 @@
     <h2 class="section-title">Add CSV files</h2>
     <div id="dropzone" style="display:none;">
       <h3>Drop CSV files here, or click to choose</h3>
-      <p>Expected columns: Serial No, Ward No, Name, Name (English), Relation Type, Relation Name, Relation Name (English), Age, Gender, EPIC No.</p>
+      <p>You'll be asked which village the files belong to. Select several files to add them all to the same village. Expected columns: Serial No, Ward No, Name, Name (English), Relation Type, Relation Name, Relation Name (English), Age, Gender, EPIC No.</p>
       <input type="file" id="fileInput" accept=".csv,text/csv" multiple>
     </div>
     <div id="noAdminMsg" class="empty">
@@ -377,10 +412,11 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 
 // ---------- state ----------
-let PARTS = {};     // partKey (= file name) -> {partKey, fileName, count, wards[], docIds[]}
+let PARTS = {};     // partKey -> {partKey, fileName, village, count, wards[], docIds[]}
 let VOTERS = [];    // flat list of voter records
 let VOTER_BY_KEY = {};
 let isAdmin = false;
+let VILLAGE = '';   // currently selected village
 
 // Verification status
 let ROLE = null;            // null | 'admin' | 'member'
@@ -428,6 +464,66 @@ function voterKey(v, partKey){
   return raw.replace(/[\/\s.]+/g,'-').slice(0, 300);
 }
 
+// ---------- villages ----------
+function villageList(){
+  const m = {};
+  Object.values(PARTS).forEach(p => {
+    const x = m[p.village] = m[p.village] || {name:p.village, files:0, voters:0};
+    x.files++; x.voters += p.count;
+  });
+  return Object.values(m).sort((a,b) => a.name.localeCompare(b.name));
+}
+function renderVillages(){
+  const g = document.getElementById('villageGrid');
+  if(!g) return;
+  const list = villageList();
+  g.innerHTML = list.length ? '' : '<div class="empty" style="grid-column:1/-1;"><strong>No villages yet</strong>The admin needs to sign in and add a village.</div>';
+  list.forEach(v => {
+    const d = document.createElement('div');
+    d.className = 'vcard';
+    d.innerHTML = `<h3>${escapeHtml(v.name)}</h3><span>${v.files} file(s) · ${v.voters} voters</span>`;
+    d.addEventListener('click', () => selectVillage(v.name));
+    g.appendChild(d);
+  });
+}
+function selectVillage(name){
+  VILLAGE = name;
+  document.getElementById('villageName').textContent = name;
+  ['q','fPart','fWard','fGender','fStatus'].forEach(id => document.getElementById(id).value = '');
+  refreshAll();
+  showScreen('screen-app');
+}
+function askVillage(count){
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    const box = document.createElement('div');
+    box.className = 'modal-box';
+    box.innerHTML = `<h3>Which village?</h3>
+      <p>${count} file(s) will be added to this village. Pick an existing one or type a new name.</p>
+      <input type="text" id="vInput" class="login-field" list="vList" placeholder="Village name" value="${escapeHtml(VILLAGE)}">
+      <datalist id="vList">${villageList().map(v => `<option value="${escapeHtml(v.name)}">`).join('')}</datalist>
+      <div id="vErr" class="login-error" style="margin-top:8px;"></div>
+      <div class="modal-buttons" style="margin-top:16px;"></div>`;
+    const row = box.querySelector('.modal-buttons');
+    const ok = document.createElement('button'); ok.className = 'modal-btn primary'; ok.textContent = 'Continue';
+    const no = document.createElement('button'); no.className = 'modal-btn'; no.textContent = 'Cancel';
+    row.appendChild(ok); row.appendChild(no);
+    overlay.appendChild(box); document.body.appendChild(overlay);
+    requestAnimationFrame(() => overlay.classList.add('show'));
+    const input = box.querySelector('#vInput'); input.focus();
+    const close = v => { overlay.classList.remove('show'); setTimeout(() => overlay.remove(), 200); resolve(v); };
+    const go = () => {
+      const val = input.value.trim();
+      if(!val){ const e = box.querySelector('#vErr'); e.textContent = 'Please enter a village name.'; e.style.display = 'block'; return; }
+      close(val);
+    };
+    ok.addEventListener('click', go);
+    no.addEventListener('click', () => close(null));
+    input.addEventListener('keydown', e => { if(e.key === 'Enter') go(); });
+  });
+}
+
 // ---------- screen navigation ----------
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(el=>{
@@ -441,10 +537,21 @@ function showScreen(id){
   });
   window.scrollTo({top:0, behavior:'smooth'});
 }
-document.getElementById('btnEnter').addEventListener('click', ()=> showScreen('screen-app'));
+document.getElementById('btnEnter').addEventListener('click', ()=> showScreen('screen-village'));
+document.getElementById('btnChangeVillage').addEventListener('click', ()=> showScreen('screen-village'));
 document.getElementById('btnHome').addEventListener('click', ()=> showScreen('screen-home'));
 document.getElementById('brandApp').addEventListener('click', ()=> showScreen('screen-home'));
+document.getElementById('brandVillage').addEventListener('click', ()=> showScreen('screen-home'));
 document.getElementById('brandHome1').addEventListener('click', ()=> {});
+document.getElementById('btnVHome').addEventListener('click', ()=> showScreen('screen-home'));
+document.getElementById('btnVAdmin').addEventListener('click', ()=> openLoginModal());
+document.getElementById('btnVMember').addEventListener('click', ()=> openMemberLoginModal());
+document.getElementById('btnNewVillage').addEventListener('click', ()=>{
+  const n = document.getElementById('newVillageName').value.trim();
+  if(!n){ notify('Missing name','Enter the new village name.'); return; }
+  document.getElementById('newVillageName').value = '';
+  selectVillage(n);
+});
 
 // ---------- modal ----------
 function showModal({title, message, buttons}){
@@ -502,19 +609,21 @@ function subscribeToParts(){
     Object.keys(groups).forEach(key => {
       const docs = groups[key].sort((a,b) => (a.d.chunk||0) - (b.d.chunk||0));
       const fileName = docs[0].d.fileName || key;
+      const village = ((docs[0].d.village || '') + '').trim() || 'Unassigned';
       let voters = [];
       docs.forEach(x => { voters = voters.concat(x.d.voters || []); });
 
       const wardSet = new Set(voters.map(v => v.ward).filter(Boolean));
       const wards = Array.from(wardSet).sort((a,b) => Number(a) - Number(b));
 
-      PARTS[key] = { partKey: key, fileName, count: voters.length, wards, docIds: docs.map(x => x.id) };
+      PARTS[key] = { partKey: key, fileName, village, count: voters.length, wards, docIds: docs.map(x => x.id) };
       voters.forEach(v => {
-        const rec = {...v, partKey: key, sourceFile: fileName, key: voterKey(v, key)};
+        const rec = {...v, partKey: key, village, sourceFile: fileName, key: voterKey(v, key)};
         VOTERS.push(rec);
         VOTER_BY_KEY[rec.key] = rec;
       });
     });
+    renderVillages();
     refreshAll();
   }, err => {
     log('Could not load the shared register: ' + err.message, 'err');
@@ -531,8 +640,8 @@ async function deleteDocIds(docIds){
   }
 }
 
-async function removeByFileName(fileName){
-  const match = Object.values(PARTS).find(p => p.fileName === fileName);
+async function removeByFileName(fileName, village){
+  const match = Object.values(PARTS).find(p => p.fileName === fileName && p.village === village);
   if(match){
     try{ await deleteDocIds(match.docIds); }
     catch(e){ log(`Could not remove previous version of ${fileName}: ${e.message}`, 'err'); }
@@ -560,6 +669,9 @@ function applyRole(){
   document.getElementById('dropzone').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('noAdminMsg').style.display = isAdmin ? 'none' : 'block';
   document.getElementById('membersSection').style.display = isAdmin ? 'block' : 'none';
+  document.getElementById('newVillageBox').style.display = isAdmin ? 'flex' : 'none';
+  document.getElementById('btnVAdmin').style.display = signedIn ? 'none' : 'inline-flex';
+  document.getElementById('btnVMember').style.display = signedIn ? 'none' : 'inline-flex';
   document.getElementById('fStatus').style.display = canSeeStatus() ? '' : 'none';
   if(!canSeeStatus()) document.getElementById('fStatus').value = '';
   renderStats();
@@ -1090,7 +1202,7 @@ function parseFile(file){
   });
 }
 
-async function processFile(file){
+async function processFile(file, village){
   const results = await parseFile(file);
   if(results.errors && results.errors.length){
     log(`${file.name}: ${results.errors.length} row(s) had parse warnings (continuing).`);
@@ -1101,7 +1213,7 @@ async function processFile(file){
     return;
   }
 
-  const partKey = file.name;                 // one "part" per uploaded file
+  const partKey = village + '__' + file.name;   // unique per village, so the same file name can exist in two villages
   const baseId = safeDocId(partKey);
   const chunks = [];
   for(let i = 0; i < rows.length; i += CHUNK_SIZE) chunks.push(rows.slice(i, i + CHUNK_SIZE));
@@ -1114,6 +1226,7 @@ async function processFile(file){
         const idx = i + j;
         batch.set(db.collection('parts').doc(`${baseId}__${String(idx).padStart(3,'0')}`), {
           partKey,
+          village,
           fileName: file.name,
           chunk: idx,
           totalChunks: chunks.length,
@@ -1124,7 +1237,7 @@ async function processFile(file){
       });
       await batch.commit();
     }
-    log(`${file.name}: ${rows.length} voters saved to the shared register.`, 'ok');
+    log(`${file.name}: ${rows.length} voters saved to ${village}.`, 'ok');
   }catch(e){
     log(`${file.name}: could not save — ${e.message}`, 'err');
   }
@@ -1143,6 +1256,9 @@ async function handleFiles(fileList){
   if(!isAdmin){ log('Sign in as admin to upload data.', 'err'); return; }
   let files = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.csv') || f.type==='text/csv');
   if(!files.length){ log('No CSV files found in selection.', 'err'); return; }
+
+  const village = await askVillage(files.length);
+  if(!village){ fileInput.value = ''; return; }
 
   // 1) same filename appearing more than once within THIS selection
   const byName = {};
@@ -1164,37 +1280,39 @@ async function handleFiles(fileList){
     // choice === null (dismissed) -> skip this group entirely
   }
 
-  // 2) filename already loaded from a previous batch
+  // 2) filename already loaded in this village from a previous batch
   for(const file of toProcess){
-    const already = Object.values(PARTS).find(p => p.fileName === file.name);
+    const already = Object.values(PARTS).find(p => p.fileName === file.name && p.village === village);
     if(already){
       const choice = await showModal({
         title: `"${file.name}" is already loaded`,
-        message: `A file with this name is already in the register (${already.count} voters). Update it with this new file's data, or keep what's already loaded?`,
+        message: `A file with this name is already in ${village} (${already.count} voters). Update it with this new file's data, or keep what's already loaded?`,
         buttons: [
           {label:'Update with this new file', value:'update', primary:true},
           {label:'Keep existing data, skip this file', value:'keep'}
         ]
       });
       if(choice !== 'update'){ log(`${file.name}: kept existing data, new file skipped.`); continue; }
-      await removeByFileName(file.name);
+      await removeByFileName(file.name, village);
     }
-    await processFile(file);
+    await processFile(file, village);
   }
 
   fileInput.value = '';
+  if(VILLAGE !== village) selectVillage(village);
 }
 
 function refreshAll(){ renderStats(); renderPartsTable(); populateFilters(); runSearch(); }
 
 function renderStats(){
-  const fileCount = Object.keys(PARTS).length;
-  document.getElementById('statsSection').style.display = fileCount ? 'block' : 'none';
-  document.getElementById('statFiles').textContent = fileCount;
-  document.getElementById('statVoters').textContent = VOTERS.length;
-  document.getElementById('statMale').textContent = VOTERS.filter(v=>/^male$/i.test(v.gender)).length;
-  document.getElementById('statFemale').textContent = VOTERS.filter(v=>/^female$/i.test(v.gender)).length;
-  document.getElementById('statThird').textContent = VOTERS.filter(v=>/third/i.test(v.gender)).length;
+  const vp = Object.values(PARTS).filter(p => p.village === VILLAGE);
+  const vv = VOTERS.filter(v => v.village === VILLAGE);
+  document.getElementById('statsSection').style.display = vp.length ? 'block' : 'none';
+  document.getElementById('statFiles').textContent = vp.length;
+  document.getElementById('statVoters').textContent = vv.length;
+  document.getElementById('statMale').textContent = vv.filter(v=>/^male$/i.test(v.gender)).length;
+  document.getElementById('statFemale').textContent = vv.filter(v=>/^female$/i.test(v.gender)).length;
+  document.getElementById('statThird').textContent = vv.filter(v=>/third/i.test(v.gender)).length;
   document.getElementById('btnRemoveAll').style.display = isAdmin ? 'inline-flex' : 'none';
 }
 
@@ -1211,7 +1329,7 @@ function wardRangeLabel(wards){
 function renderPartsTable(){
   const body = document.getElementById('partsBody');
   body.innerHTML = '';
-  Object.values(PARTS).forEach(p=>{
+  Object.values(PARTS).filter(p => p.village === VILLAGE).forEach(p=>{
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${escapeHtml(p.fileName)}</td>
@@ -1228,10 +1346,12 @@ function renderPartsTable(){
 }
 
 document.getElementById('btnRemoveAll').addEventListener('click', async ()=>{
-  if(!isAdmin || !Object.keys(PARTS).length) return;
+  const vp = Object.values(PARTS).filter(p => p.village === VILLAGE);
+  if(!isAdmin || !vp.length) return;
+  const vcount = VOTERS.filter(v => v.village === VILLAGE).length;
   const choice = await showModal({
-    title: 'Remove everything?',
-    message: `This permanently deletes all ${Object.keys(PARTS).length} loaded file(s) and ${VOTERS.length} voter records from the shared register, for every device. This can't be undone.`,
+    title: 'Remove everything in this village?',
+    message: `This permanently deletes all ${vp.length} file(s) and ${vcount} voter records of "${VILLAGE}" from the shared register, for every device. This can't be undone.`,
     buttons: [
       {label:'Remove all data', value:'confirm', primary:true},
       {label:'Cancel', value:'cancel'}
@@ -1240,9 +1360,9 @@ document.getElementById('btnRemoveAll').addEventListener('click', async ()=>{
   if(choice !== 'confirm') return;
   try{
     const ids = [];
-    Object.values(PARTS).forEach(p => p.docIds.forEach(id => ids.push(id)));
+    vp.forEach(p => p.docIds.forEach(id => ids.push(id)));
     await deleteDocIds(ids);
-    log('All loaded data removed.', 'ok');
+    log(`All data for ${VILLAGE} removed.`, 'ok');
   }catch(e){
     log('Could not remove all data: ' + e.message, 'err');
   }
@@ -1253,7 +1373,7 @@ function populateFilters(){
   const selPart = document.getElementById('fPart');
   const curPart = selPart.value;
   selPart.innerHTML = '<option value="">All files</option>';
-  Object.values(PARTS).forEach(p=>{
+  Object.values(PARTS).filter(p => p.village === VILLAGE).forEach(p=>{
     const opt = document.createElement('option');
     opt.value = p.partKey;
     opt.textContent = p.fileName;
@@ -1264,7 +1384,7 @@ function populateFilters(){
   // ward filter
   const selWard = document.getElementById('fWard');
   const curWard = selWard.value;
-  const wards = Array.from(new Set(VOTERS.map(v => v.ward).filter(Boolean)))
+  const wards = Array.from(new Set(VOTERS.filter(v => v.village === VILLAGE).map(v => v.ward).filter(Boolean)))
     .sort((a,b) => Number(a) - Number(b));
   selWard.innerHTML = '<option value="">All wards</option>';
   wards.forEach(w=>{
@@ -1289,7 +1409,7 @@ function runSearch(){
   const gender = document.getElementById('fGender').value;
   const sFilter = canSeeStatus() ? document.getElementById('fStatus').value : '';
 
-  let results = VOTERS;
+  let results = VOTERS.filter(v => v.village === VILLAGE);
   if(partKey) results = results.filter(v => v.partKey === partKey);
   if(ward) results = results.filter(v => String(v.ward) === ward);
   if(gender) results = results.filter(v => v.gender && v.gender.toLowerCase() === gender.toLowerCase());
@@ -1312,14 +1432,15 @@ function renderResults(results){
   const meta = document.getElementById('resultCount');
   const exportLink = document.getElementById('btnExport');
   const showStatus = canSeeStatus();
+  const total = VOTERS.filter(v => v.village === VILLAGE).length;
 
-  if(VOTERS.length === 0){
-    wrap.innerHTML = `<div class="empty"><strong>No voter rolls loaded yet</strong>Add one or more CSV files above to start searching.</div>`;
+  if(total === 0){
+    wrap.innerHTML = `<div class="empty"><strong>No voter rolls loaded yet</strong>${VILLAGE ? 'This village has no files yet.' : 'Select a village to begin.'}</div>`;
     meta.textContent = 'Upload a CSV to begin searching.';
     exportLink.style.display = 'none';
     return;
   }
-  meta.textContent = `${results.length} of ${VOTERS.length} voters`;
+  meta.textContent = `${results.length} of ${total} voters`;
   exportLink.style.display = results.length ? 'inline' : 'none';
 
   if(results.length === 0){
@@ -1399,6 +1520,7 @@ document.getElementById('btnReset').addEventListener('click', ()=>{
 document.getElementById('btnExport').addEventListener('click', exportCsv);
 
 subscribeToParts();
+renderVillages();
 renderResults([]);
 </script>
 </body>
