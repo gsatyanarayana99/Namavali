@@ -67,7 +67,7 @@
   .vcard:hover{border-color:var(--accent);background:var(--card-hi);transform:translateY(-2px);}
   .vcard h3{margin:0 0 6px;font-family:'Fraunces',Georgia,serif;font-weight:500;font-size:1.2rem;}
   .vcard span{color:var(--ink-soft);font-size:.85rem;}
-  #villageName{color:var(--accent);}
+  #villageName, #mVillageName{color:var(--accent);}
 
   /* ---------- app page ---------- */
   .backlink{
@@ -122,6 +122,7 @@
   .rm-btn:hover{border-color:#e08a7d;background:rgba(224,138,125,0.1);}
   .ed-btn{background:none;border:1px solid var(--rule-strong);color:var(--ink-soft);font-size:.78rem;padding:3px 9px;cursor:pointer;border-radius:3px;margin-right:6px;}
   .ed-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .tag{display:inline-block;font-size:.7rem;color:var(--pending);border:1px solid rgba(217,164,65,.5);border-radius:20px;padding:1px 8px;margin-left:6px;}
 
   .controls{display:flex;flex-wrap:wrap;gap:10px;background:var(--card);border:1px solid var(--rule);padding:16px;border-radius:3px;}
   .controls input[type=text], .controls input[type=tel], .controls select{font-family:inherit;font-size:.92rem;padding:9px 11px;border:1px solid var(--rule-strong);background:var(--paper);color:var(--ink);border-radius:3px;transition:border-color .15s ease;}
@@ -309,6 +310,7 @@
   <header class="page">
     <h1>Voter Roll Register — <span id="villageName"></span></h1>
     <p>Search the voter rolls by name (English or Telugu), relation name or EPIC number. Filter by ward, gender or file.</p>
+    <button class="btn ghost" id="btnRenameVillage" style="display:none;margin-top:14px;">✎ Rename village</button>
   </header>
 
   <section>
@@ -325,14 +327,14 @@
     <div id="log"></div>
   </section>
 
-  <!-- Admin only: verification members -->
+  <!-- Admin only: verification members (per village) -->
   <section id="membersSection" style="display:none;">
-    <h2 class="section-title">Verification members</h2>
-    <p class="hint">Add the name, mobile number, ward(s) and a password for each person who may update the verification Status. Several members can share a ward. Members sign in with their mobile number and the password you set here, and can edit only voters in their own ward(s). Separate multiple wards with commas (e.g. <span style="font-family:'IBM Plex Mono',monospace;">3, 4</span>). To change a password, click Edit, enter the new one and choose Update member.</p>
+    <h2 class="section-title">Verification members — <span id="mVillageName"></span></h2>
+    <p class="hint">Members are added <strong>per village</strong>: a member added here can update Status only in <em>this</em> village, and only for the ward(s) you enter. To give the same person access to another village, open that village and add them there. Members sign in with their mobile number and password. Separate multiple wards with commas (e.g. <span style="font-family:'IBM Plex Mono',monospace;">3, 4</span>). To change wards or the password, click Edit, change it and choose Update member. If the mobile number is already a member of another village, you can leave the password empty to keep it.</p>
     <div class="controls member-form">
       <input type="text" id="mName" placeholder="Member name">
       <input type="tel" id="mPhone" placeholder="Mobile (10 digits)">
-      <input type="text" id="mWards" placeholder="Ward(s), e.g. 5 or 5, 6">
+      <input type="text" id="mWards" placeholder="Ward(s) in this village, e.g. 5 or 5, 6">
       <input type="text" id="mPassword" placeholder="Password (min 6 characters)" autocomplete="off">
       <button class="btn" id="btnAddMember">Add member</button>
       <button class="btn ghost" id="btnClearMember" style="display:none;">Cancel edit</button>
@@ -419,8 +421,13 @@ let isAdmin = false;
 let VILLAGE = '';   // currently selected village
 
 // Verification status
+// A member document looks like:
+//   { name, phone, password, wards: [union of all wards], villageWards: { "Village A": ["3","4"], "Village B": ["7"] } }
+// `villageWards` is what makes a member belong to specific villages only.
+// Older members that have no `villageWards` are "legacy": they keep working in every village
+// until the admin edits them inside a village (which assigns them to that village only).
 let ROLE = null;            // null | 'admin' | 'member'
-let ME = {name:'', phone:'', wards:[]};
+let ME = {name:'', phone:'', wards:[], villageWards:null};
 let STATUS = {};            // voterKey -> status doc
 let MEMBERS = [];           // admin only
 let statusUnsub = null, membersUnsub = null, memberDocUnsub = null;
@@ -453,10 +460,15 @@ function getSecAuth(){
   return secAuthPromise;
 }
 
+// wards the signed-in member may edit in a given village
+function memberWardsFor(village){
+  if(ME.villageWards) return (ME.villageWards[village] || []).map(String);
+  return ME.wards;   // legacy member: all villages, their old ward list
+}
 function canSeeStatus(){ return ROLE === 'admin' || ROLE === 'member'; }
 function canEdit(v){
   if(ROLE === 'admin') return true;
-  if(ROLE === 'member') return !!v.ward && ME.wards.includes(String(v.ward));
+  if(ROLE === 'member') return !!v.ward && memberWardsFor(v.village).includes(String(v.ward));
   return false;
 }
 function voterKey(v, partKey){
@@ -486,36 +498,44 @@ function renderVillages(){
     g.appendChild(d);
   });
 }
+function setVillageTitles(){
+  document.getElementById('villageName').textContent = VILLAGE;
+  document.getElementById('mVillageName').textContent = VILLAGE;
+}
 function selectVillage(name){
   VILLAGE = name;
-  document.getElementById('villageName').textContent = name;
+  setVillageTitles();
+  resetMemberForm();
   ['q','fPart','fWard','fGender','fStatus'].forEach(id => document.getElementById(id).value = '');
   refreshAll();
+  setStatusLabel();
   showScreen('screen-app');
 }
-function askVillage(count){
+
+// generic text prompt (used for village names)
+function askText({title, message, value, placeholder, okLabel, listItems}){
   return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     const box = document.createElement('div');
     box.className = 'modal-box';
-    box.innerHTML = `<h3>Which village?</h3>
-      <p>${count} file(s) will be added to this village. Pick an existing one or type a new name.</p>
-      <input type="text" id="vInput" class="login-field" list="vList" placeholder="Village name" value="${escapeHtml(VILLAGE)}">
-      <datalist id="vList">${villageList().map(v => `<option value="${escapeHtml(v.name)}">`).join('')}</datalist>
-      <div id="vErr" class="login-error" style="margin-top:8px;"></div>
+    box.innerHTML = `<h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(message)}</p>
+      <input type="text" id="tInput" class="login-field" ${listItems ? 'list="tList"' : ''} placeholder="${escapeHtml(placeholder||'')}" value="${escapeHtml(value||'')}">
+      ${listItems ? `<datalist id="tList">${listItems.map(n => `<option value="${escapeHtml(n)}">`).join('')}</datalist>` : ''}
+      <div id="tErr" class="login-error" style="margin-top:8px;"></div>
       <div class="modal-buttons" style="margin-top:16px;"></div>`;
     const row = box.querySelector('.modal-buttons');
-    const ok = document.createElement('button'); ok.className = 'modal-btn primary'; ok.textContent = 'Continue';
+    const ok = document.createElement('button'); ok.className = 'modal-btn primary'; ok.textContent = okLabel || 'Continue';
     const no = document.createElement('button'); no.className = 'modal-btn'; no.textContent = 'Cancel';
     row.appendChild(ok); row.appendChild(no);
     overlay.appendChild(box); document.body.appendChild(overlay);
     requestAnimationFrame(() => overlay.classList.add('show'));
-    const input = box.querySelector('#vInput'); input.focus();
+    const input = box.querySelector('#tInput'); input.focus(); input.select();
     const close = v => { overlay.classList.remove('show'); setTimeout(() => overlay.remove(), 200); resolve(v); };
     const go = () => {
       const val = input.value.trim();
-      if(!val){ const e = box.querySelector('#vErr'); e.textContent = 'Please enter a village name.'; e.style.display = 'block'; return; }
+      if(!val){ const e = box.querySelector('#tErr'); e.textContent = 'Please enter a name.'; e.style.display = 'block'; return; }
       close(val);
     };
     ok.addEventListener('click', go);
@@ -523,6 +543,64 @@ function askVillage(count){
     input.addEventListener('keydown', e => { if(e.key === 'Enter') go(); });
   });
 }
+function askVillage(count){
+  return askText({
+    title: 'Which village?',
+    message: `${count} file(s) will be added to this village. Pick an existing one or type a new name.`,
+    value: VILLAGE, placeholder: 'Village name', listItems: villageList().map(v => v.name)
+  });
+}
+
+// ---------- rename village (admin) ----------
+async function renameVillage(){
+  const old = VILLAGE;
+  if(!isAdmin || !old) return;
+  const nn = await askText({
+    title: 'Rename village',
+    message: `Enter the new name for "${old}". All of its files and its member assignments move to the new name.`,
+    value: old, okLabel: 'Rename'
+  });
+  if(!nn || nn === old) return;
+
+  if(villageList().some(v => v.name === nn)){
+    const c = await showModal({
+      title: 'Village already exists',
+      message: `"${nn}" already exists. Continuing will merge "${old}" into it (files and members of both will be combined).`,
+      buttons: [{label:'Merge into ' + nn, value:'yes', primary:true},{label:'Cancel', value:'no'}]
+    });
+    if(c !== 'yes') return;
+  }
+
+  VILLAGE = nn;                       // keep the screen on the renamed village while data updates
+  setVillageTitles();
+  try{
+    // 1) move every file of this village (only the `village` field changes)
+    const ids = [];
+    Object.values(PARTS).filter(p => p.village === old).forEach(p => p.docIds.forEach(id => ids.push(id)));
+    for(let i = 0; i < ids.length; i += 400){
+      const batch = db.batch();
+      ids.slice(i, i + 400).forEach(id => batch.update(db.collection('parts').doc(id), {village: nn}));
+      await batch.commit();
+    }
+    // 2) move member assignments of this village
+    const mb = db.batch(); let n = 0;
+    MEMBERS.forEach(m => {
+      if(m.villageWards && m.villageWards[old]){
+        const vw = {...m.villageWards};
+        const w = vw[old]; delete vw[old];
+        vw[nn] = Array.from(new Set([...(vw[nn] || []), ...w]));
+        mb.update(db.collection('members').doc(m.id), {villageWards: vw});
+        n++;
+      }
+    });
+    if(n) await mb.commit();
+    log(`Village renamed: ${old} → ${nn}.`, 'ok');
+  }catch(e){
+    VILLAGE = old; setVillageTitles();
+    notify('Could not rename village', e.message);
+  }
+}
+document.getElementById('btnRenameVillage').addEventListener('click', renameVillage);
 
 // ---------- screen navigation ----------
 function showScreen(id){
@@ -656,19 +734,27 @@ async function removePart(partKey){
 }
 
 // ---------- auth & roles ----------
+function setStatusLabel(){
+  let label = '';
+  if(ROLE === 'admin') label = `Signed in as ${ME.phone}`;
+  if(ROLE === 'member'){
+    const w = VILLAGE ? memberWardsFor(VILLAGE) : null;
+    label = `${ME.name} · ` + (w ? `${VILLAGE}: ${w.length ? 'Ward ' + w.join(', ') : 'no access'} · ` : '') + ME.phone;
+  }
+  document.getElementById('adminStatus').textContent = label;
+}
+
 function applyRole(){
   isAdmin = ROLE === 'admin';
   const signedIn = ROLE !== null;
-  let label = '';
-  if(ROLE === 'admin') label = `Signed in as ${ME.phone}`;
-  if(ROLE === 'member') label = `${ME.name} · Ward ${ME.wards.join(', ')} · ${ME.phone}`;
-  document.getElementById('adminStatus').textContent = label;
+  setStatusLabel();
   document.getElementById('btnSignIn').style.display = signedIn ? 'none' : 'inline-flex';
   document.getElementById('btnMemberSignIn').style.display = signedIn ? 'none' : 'inline-flex';
   document.getElementById('btnSignOut').style.display = signedIn ? 'inline-flex' : 'none';
   document.getElementById('dropzone').style.display = isAdmin ? 'block' : 'none';
   document.getElementById('noAdminMsg').style.display = isAdmin ? 'none' : 'block';
   document.getElementById('membersSection').style.display = isAdmin ? 'block' : 'none';
+  document.getElementById('btnRenameVillage').style.display = isAdmin ? 'inline-block' : 'none';
   document.getElementById('newVillageBox').style.display = isAdmin ? 'flex' : 'none';
   document.getElementById('btnVAdmin').style.display = signedIn ? 'none' : 'inline-flex';
   document.getElementById('btnVMember').style.display = signedIn ? 'none' : 'inline-flex';
@@ -708,7 +794,7 @@ function startMembersListener(){
 
 auth.onAuthStateChanged(user => {
   stopListeners();
-  ROLE = null; ME = {name:'', phone:'', wards:[]};
+  ROLE = null; ME = {name:'', phone:'', wards:[], villageWards:null};
 
   if(!user){ applyRole(); return; }
 
@@ -723,8 +809,13 @@ auth.onAuthStateChanged(user => {
         return;
       }
       const d = doc.data();
+      let vw = null;
+      if(d.villageWards){
+        vw = {};
+        Object.keys(d.villageWards).forEach(k => { vw[k] = (d.villageWards[k] || []).map(String); });
+      }
       ROLE = 'member';
-      ME = {name: d.name || 'Member', phone: d.phone || id, wards: (d.wards||[]).map(String)};
+      ME = {name: d.name || 'Member', phone: d.phone || id, wards: (d.wards||[]).map(String), villageWards: vw};
       applyRole();
       startStatusListener();
     }, err => {
@@ -737,7 +828,7 @@ auth.onAuthStateChanged(user => {
   if(user.email){
     // Owner account (email + password). Real enforcement is in the Firestore rules.
     ROLE = 'admin';
-    ME = {name:'Admin', phone:user.email, wards:[]};
+    ME = {name:'Admin', phone:user.email, wards:[], villageWards:null};
     applyRole();
     startStatusListener();
     startMembersListener();
@@ -877,9 +968,16 @@ document.getElementById('btnMemberSignIn').addEventListener('click', openMemberL
 document.getElementById('noAdminSignInLink').addEventListener('click', openLoginModal);
 document.getElementById('btnSignOut').addEventListener('click', ()=> auth.signOut());
 
-// ---------- member management (admin) ----------
+// ---------- member management (admin, per village) ----------
 function parseWards(s){
   return Array.from(new Set(String(s||'').split(/[,\s;]+/).map(x => x.trim()).filter(Boolean)));
+}
+function unionWards(vw){
+  return Array.from(new Set(Object.values(vw).flat().map(String)));
+}
+// members that belong to the village currently open (legacy members show everywhere, tagged)
+function membersHere(){
+  return MEMBERS.filter(m => m.villageWards ? !!m.villageWards[VILLAGE] : true);
 }
 
 function renderMembers(){
@@ -887,20 +985,23 @@ function renderMembers(){
   if(!body) return;
   body.innerHTML = '';
   if(!isAdmin) return;
-  if(!MEMBERS.length){
-    body.innerHTML = '<tr><td colspan="5" style="color:var(--ink-soft);">No members added yet.</td></tr>';
+  const list = membersHere();
+  if(!list.length){
+    body.innerHTML = '<tr><td colspan="5" style="color:var(--ink-soft);">No members added for this village yet.</td></tr>';
     return;
   }
-  MEMBERS.forEach(m => {
+  list.forEach(m => {
+    const legacy = !m.villageWards;
+    const wards = legacy ? (m.wards||[]) : m.villageWards[VILLAGE];
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${escapeHtml(m.name||'')}</td>
+      <td>${escapeHtml(m.name||'')}${legacy ? '<span class="tag" title="Added before villages existed. Works in every village until you Edit it here.">legacy · all villages</span>' : ''}</td>
       <td class="partserial">${escapeHtml(m.phone||m.id)}</td>
-      <td>${escapeHtml((m.wards||[]).join(', '))}</td>
+      <td>${escapeHtml((wards||[]).join(', '))}</td>
       <td><span class="partserial pw-text" data-pw="${escapeHtml(m.password||'')}">••••••</span>
           <button class="st-hist" data-showpw="1" style="margin-left:6px;">Show</button></td>
       <td style="white-space:nowrap;">
-        <button class="ed-btn" data-edit="${escapeHtml(m.id)}">Edit</button>
+        <button class="ed-btn" data-edit="${escapeHtml(m.id)}">${legacy ? 'Assign here' : 'Edit'}</button>
         <button class="rm-btn" data-del="${escapeHtml(m.id)}">Remove</button>
       </td>`;
     body.appendChild(tr);
@@ -931,10 +1032,11 @@ document.getElementById('membersBody').addEventListener('click', async e => {
   if(ed){
     const m = MEMBERS.find(x => x.id === ed.getAttribute('data-edit'));
     if(!m) return;
+    const wards = m.villageWards ? (m.villageWards[VILLAGE] || []) : (m.wards || []);
     document.getElementById('mName').value = m.name || '';
     document.getElementById('mPhone').value = m.phone || m.id;
     document.getElementById('mPhone').disabled = true;     // number is the login id
-    document.getElementById('mWards').value = (m.wards||[]).join(', ');
+    document.getElementById('mWards').value = wards.join(', ');
     document.getElementById('mPassword').value = m.password || '';
     document.getElementById('btnAddMember').textContent = 'Update member';
     document.getElementById('btnClearMember').style.display = 'inline-block';
@@ -943,12 +1045,26 @@ document.getElementById('membersBody').addEventListener('click', async e => {
   if(del){
     const m = MEMBERS.find(x => x.id === del.getAttribute('data-del'));
     if(!m) return;
+    const otherVillages = m.villageWards ? Object.keys(m.villageWards).filter(v => v !== VILLAGE) : [];
+    const keepsOthers = !!m.villageWards && otherVillages.length > 0;
     const c = await showModal({
       title: 'Remove member?',
-      message: `${m.name} (${m.phone||m.id}) will immediately lose access to the Status column. Past history stays recorded.`,
+      message: keepsOthers
+        ? `${m.name} (${m.phone||m.id}) will be removed from ${VILLAGE} only. They keep their access in: ${otherVillages.join(', ')}.`
+        : `${m.name} (${m.phone||m.id}) will immediately lose access to the Status column. Past history stays recorded.`,
       buttons: [{label:'Remove member', value:'yes', primary:true},{label:'Cancel', value:'no'}]
     });
     if(c !== 'yes') return;
+
+    if(keepsOthers){
+      // only drop this village, keep the member and their login
+      try{
+        const vw = {...m.villageWards}; delete vw[VILLAGE];
+        await db.collection('members').doc(m.id).update({villageWards: vw, wards: unionWards(vw)});
+      }catch(err){ notify('Could not remove member', err.message); }
+      return;
+    }
+
     try{
       await db.collection('members').doc(m.id).delete();   // access is revoked as soon as this is gone
     }catch(err){ notify('Could not remove member', err.message); return; }
@@ -966,30 +1082,35 @@ document.getElementById('membersBody').addEventListener('click', async e => {
 document.getElementById('btnClearMember').addEventListener('click', resetMemberForm);
 document.getElementById('btnAddMember').addEventListener('click', async () => {
   if(!isAdmin) return;
+  if(!VILLAGE){ notify('No village selected', 'Open a village first.'); return; }
   const btn = document.getElementById('btnAddMember');
   const name = document.getElementById('mName').value.trim();
   const phone = normPhone(document.getElementById('mPhone').value);
   const wards = parseWards(document.getElementById('mWards').value);
-  const pw = document.getElementById('mPassword').value;
+  const pwInput = document.getElementById('mPassword').value;
   if(!name){ notify('Missing name', 'Please enter the member\'s name.'); return; }
   if(!phone){ notify('Invalid mobile number', 'Enter a 10-digit mobile number (or full number with country code).'); return; }
   if(!wards.length){ notify('Missing ward', 'Enter at least one ward number.'); return; }
-  if(pw.length < 6){ notify('Password too short', 'The password must be at least 6 characters.'); return; }
 
-  const known = new Set(VOTERS.map(v => String(v.ward)).filter(Boolean));
+  const id = phone.replace(/\D/g,'');
+  const email = memberEmail(phone);
+  const existing = MEMBERS.find(m => m.id === id);
+  if(!existing && pwInput.length < 6){ notify('Password too short', 'The password must be at least 6 characters.'); return; }
+  if(pwInput && pwInput.length < 6){ notify('Password too short', 'The password must be at least 6 characters.'); return; }
+  const pw = pwInput || existing.password;     // empty = keep the existing member's password
+
+  // ward check against THIS village's data only
+  const known = new Set(VOTERS.filter(v => v.village === VILLAGE).map(v => String(v.ward)).filter(Boolean));
   const unknown = known.size ? wards.filter(w => !known.has(w)) : [];
   if(unknown.length){
     const c = await showModal({
-      title: 'Ward not found in loaded data',
-      message: `Ward ${unknown.join(', ')} doesn't appear in any loaded file. Save anyway?`,
+      title: 'Ward not found in this village',
+      message: `Ward ${unknown.join(', ')} doesn't appear in any file loaded for ${VILLAGE}. Save anyway?`,
       buttons: [{label:'Save anyway', value:'yes', primary:true},{label:'Go back', value:'no'}]
     });
     if(c !== 'yes') return;
   }
 
-  const id = phone.replace(/\D/g,'');
-  const email = memberEmail(phone);
-  const existing = MEMBERS.find(m => m.id === id);
   btn.disabled = true;
   try{
     const sa = await getSecAuth();
@@ -1011,8 +1132,16 @@ document.getElementById('btnAddMember').addEventListener('click', async () => {
       await sa.currentUser.updatePassword(pw);
       await sa.signOut();
     }
+
+    // this member's villages: keep any other villages they already have, set THIS village's wards.
+    // (A legacy member with no villageWards becomes assigned to this village only.)
+    const villageWards = existing && existing.villageWards ? {...existing.villageWards} : {};
+    villageWards[VILLAGE] = wards;
+
     await db.collection('members').doc(id).set({
-      name, phone, wards, password: pw,
+      name, phone, password: pw,
+      wards: unionWards(villageWards),     // kept for compatibility with the Firestore rules
+      villageWards,
       addedBy: ME.phone,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -1043,7 +1172,7 @@ async function saveStatus(v, newStatus, comment){
   const batch = db.batch();
   batch.set(ref, {
     status: newStatus, comment,
-    ward, epic: v.epic || '', name: v.nameEn || v.name || '',
+    ward, village: v.village || '', epic: v.epic || '', name: v.nameEn || v.name || '',
     updatedBy: ME.name, updatedByPhone: ME.phone, updatedAt: ts
   });
   batch.set(ref.collection('history').doc(), {
@@ -1302,7 +1431,7 @@ async function handleFiles(fileList){
   if(VILLAGE !== village) selectVillage(village);
 }
 
-function refreshAll(){ renderStats(); renderPartsTable(); populateFilters(); runSearch(); }
+function refreshAll(){ renderStats(); renderPartsTable(); renderMembers(); populateFilters(); runSearch(); }
 
 function renderStats(){
   const vp = Object.values(PARTS).filter(p => p.village === VILLAGE);
